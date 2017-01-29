@@ -86,6 +86,9 @@ int main(int argc, char *argv[])
             strncpy(buffer, "Welcome!", 255);
          }
 
+         n = write(newsockfd,buffer,255); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
+         if (n < 0) error("ERROR writing to socket");
+
          if (byeFlag == 1){
             printf("Closing connection. Goodbye!\n");
             close(sockfd);
@@ -93,8 +96,6 @@ int main(int argc, char *argv[])
             return 0; 
          }
 
-         n = write(newsockfd,buffer,255); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
-         if (n < 0) error("ERROR writing to socket");
     }
 }
 
