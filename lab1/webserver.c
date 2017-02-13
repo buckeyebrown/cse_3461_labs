@@ -13,6 +13,8 @@ void error(char *msg)
     exit(1);
 }
 
+void HTTPResponse(char* input);
+
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
     int portno = 5434; // port number 5434
@@ -58,6 +60,7 @@ int main(int argc, char *argv[]){
 
 		printf("%s\n", buffer);
 
+		HTTPResponse(char* input);
 
         n = write(newsockfd,buffer,255); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
 
@@ -66,5 +69,10 @@ int main(int argc, char *argv[]){
         close(newsockfd);
         return 0; 
     }     
-     
+    
+
+    void HTTPResponse(char* input){
+    	bzero(input, 256);
+    	strncpy(input, "HTTP/1.1 404 OK\nConnection: close", 255);
+    } 
 }
