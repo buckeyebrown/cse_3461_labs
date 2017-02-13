@@ -13,14 +13,14 @@ void error(char *msg)
     exit(1);
 }
 
-void sendHTTPResponse(char* input);
+void sendHTTPResponse(char* request, char* response);
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
     int portno = 5434; // port number 5434
     socklen_t clilen;
      
-    char buffer[256];
+    char request[512];
      
     /*sockaddr_in: Structure Containing an Internet Address*/
     struct sockaddr_in serv_addr, cli_addr;
@@ -53,18 +53,18 @@ int main(int argc, char *argv[]){
             error("ERROR on accept");
         
         int n;
-        bzero(buffer,4096);
+        bzero(request,512);
 
-        n = read(newsockfd,buffer,4096); //Read is a block function. It will read at most 255 bytes
+        n = read(newsockfd,request,512); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
 
-		printf("%s\n", buffer);
+		printf("%s\n", request);
 
-		sendHTTPResponse(buffer);
+		char response[512];
 
-		printf("**%s\n", buffer);
+		sendHTTPResponse(request, response);
 
-        n = write(newsockfd,buffer,4096); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
+        n = write(newsockfd,response,512); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
 
         printf("Closing connection. Goodbye!\n");
         close(sockfd);
@@ -73,9 +73,70 @@ int main(int argc, char *argv[]){
     }     
 }
 
-void sendHTTPResponse(char* input){
-    bzero(input, 256);
-    char* responseMessage = "HTTP/1.1 200 OK\r\nConnection: close";
+void sendHTTPResponse(char* request, char* response){
+	char* responseMessage = "";
 
-    strncpy(input, responseMessage, 4096);
+	char* text_html_request = "GET /text33.html HTTP/1.1\r\n";
+	char* text_html_request_true = strstr(request, text_html_request);
+
+	char* picture_html_request = "GET /picture.html HTTP/1.1\r\n";
+	char* picture_html_request_true = strstr(request, picture_html_request);
+
+	char* big_picture_html_request = "GET /bigpicture.html HTTP/1.1\r\n";
+	char* big_picture_html_request_true = strstr(request, big_picture_html_request);
+
+
+	if (text_html_request_true){
+	  printf("\nwe did it\n");
+	  long fsize;
+	  FILE *filepointer = fopen("text.html", "rb");
+	  if (!filepointer){
+	  	perror("The text.html file cannot be opened.");
+	  	exit(1);
+	  }
+	  printf("File open successful\n");
+
+	  fsize = ftell(filepointer);
+	  if (fsize == -1){
+	  	perror("The text.html file size cannot be retrieved.");
+	  	exit(1);
+	  }
+
+	  rewind(filepointer);
+
+	  char *html_data = (char*) malloc(fsize + 1);
+	  if (!html_data){
+	  	perror("The file buffer could not be allocated in memory.");
+	  	exit(1);
+	  }
+
+	  if (fread(html_data, fsize, 1, filepointer) != 1){
+	  	perror("The file was not successfully read.");
+	  	exit(1);
+	  }
+
+
+	  printf("%s\n", html_data);
+
+	  fclose(filepointer);
+	}
+	else if (picture_html_request_true){
+
+	}
+	else if (big_picture_html_request_true){
+
+	}
+	else{
+	    responseMessage = "HTTP/1.1 404 Not Found\r\n"
+	      "Content-type: text/html\r\n"
+	      "\r\n"
+	      "<html>\r\n"
+	      " <body>\r\n"
+	      "  <h1>Not Found</h1>\r\n"
+	      "  <p>The file you have requested was not found on this webserver.</p>\r\n"
+	      " </body>\r\n"
+	      "</html>\r\n";
+	}
+
+    strncpy(response, responseMessage, 512);
 } 
