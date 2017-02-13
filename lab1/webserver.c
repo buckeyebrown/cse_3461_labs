@@ -13,7 +13,8 @@ void error(char *msg)
     exit(1);
 }
 
-void sendHTTPResponse(char* request, char* response);
+void sendHTTPResponse(char* request, int newsockfd);
+void readHTMLFile(char* filename, int newsockfd);
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
@@ -60,11 +61,9 @@ int main(int argc, char *argv[]){
 
 		printf("%s\n", request);
 
-		char response[512];
+		sendHTTPResponse(request, newsockfd);
 
-		sendHTTPResponse(request, response);
-
-        n = write(newsockfd,response,512); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
+        //n = write(newsockfd,response,1024); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
 
         printf("Closing connection. Goodbye!\n");
         close(sockfd);
@@ -73,8 +72,7 @@ int main(int argc, char *argv[]){
     }     
 }
 
-void sendHTTPResponse(char* request, char* response){
-	char* responseMessage = "";
+void sendHTTPResponse(char* request, int newsockfd){
 
 	char* text_html_request = "GET /text33.html HTTP/1.1\r\n";
 	char* text_html_request_true = strstr(request, text_html_request);
@@ -87,9 +85,27 @@ void sendHTTPResponse(char* request, char* response){
 
 
 	if (text_html_request_true){
-	  printf("\nwe did it\n");
+	  readHTMLFile("text.html", newsockfd);
+	}
+	else if (picture_html_request_true){
+
+	}
+	else if (big_picture_html_request_true){
+
+	}
+	else{
+
+	}
+} 
+
+void readHTMLFile(char* filename, int newsockfd){
+
+	  char* str = "HTTP/1.1 200 OK\r\n";
+	  int len = strlen(str);
+	  write(newsockfd,str,len);
+
 	  long fsize;
-	  FILE *filepointer = fopen("text.html", "rb"); //Open file stream for the text.html file
+	  FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
 
 	  if (!filepointer){
 	  	perror("The text.html file cannot be opened.");
@@ -104,12 +120,28 @@ void sendHTTPResponse(char* request, char* response){
 	  	exit(1);
 	  }
 
+	  /**
+	  str = "Content-length: ";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+	  printf(" works here\n");
+
+	  char* size = (char*) fsize;
+	  len = strlen(size);
+	  write(newsockfd,size,len);
+	  printf(" works here\n");
+	  */
+
+	  str = "\r\nContent-type: text/html\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+	  printf(" works here\n");
+
+	  //responseMessage = responseMessage + "Content-length: " + &fsize + "\r\n"; //print the fsize as the content length
+	  //responseMessage = responseMessage + "Content-type: text/html\r\n";
 	  rewind(filepointer); //Move cursor back to start
 
-
 	  char *html_data = (char*) malloc(fsize); //Allocate the memory for the size of the html_data
-
-	  //printf("@@@%ld\n", fsize);
 
 	  if (!html_data){
 	  	perror("The file buffer could not be allocated in memory.");
@@ -118,33 +150,20 @@ void sendHTTPResponse(char* request, char* response){
 
 	  //fread(html_data, fsize, 1, filepointer) == 0;
 
-	  if (fread(&html_data, fsize, 1, filepointer) == 0){
+	  if (fread(html_data, fsize, 1, filepointer) == 0){
 	  	perror("The file was not successfully read.");
 	  	exit(1);
 	  }
 
+	  printf("\n\n\n");
+	  len = strlen(html_data);
+	  printf("%i\n", len);
+	  write(newsockfd,html_data,len);
+	  printf(" works here\n");
 
-	  //printf("!!!!!%s\n", html_data);
+	  fclose(filepointer); //close the IO stream for the file 
+	  printf(" works here\n");
 
-	  fclose(filepointer); //close the IO stream for the file
-	}
-	else if (picture_html_request_true){
-
-	}
-	else if (big_picture_html_request_true){
-
-	}
-	else{
-	    responseMessage = "HTTP/1.1 404 Not Found\r\n"
-	      "Content-type: text/html\r\n"
-	      "\r\n"
-	      "<html>\r\n"
-	      " <body>\r\n"
-	      "  <h1>Not Found</h1>\r\n"
-	      "  <p>The file you have requested was not found on this webserver.</p>\r\n"
-	      " </body>\r\n"
-	      "</html>\r\n";
-	}
-
-    strncpy(response, responseMessage, 512);
-} 
+	  free(html_data);
+	  //responseMessage = responseMessage + html_data;
+}
