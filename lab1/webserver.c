@@ -13,7 +13,7 @@ void error(char *msg)
     exit(1);
 }
 
-void HTTPResponse(char* input);
+void sendHTTPResponse(char* input);
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
@@ -53,26 +53,29 @@ int main(int argc, char *argv[]){
             error("ERROR on accept");
         
         int n;
-        bzero(buffer,256);
+        bzero(buffer,4096);
 
-        n = read(newsockfd,buffer,255); //Read is a block function. It will read at most 255 bytes
+        n = read(newsockfd,buffer,4096); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
 
 		printf("%s\n", buffer);
 
-		HTTPResponse(char* input);
+		sendHTTPResponse(buffer);
 
-        n = write(newsockfd,buffer,255); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
+		printf("**%s\n", buffer);
+
+        n = write(newsockfd,buffer,4096); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
 
         printf("Closing connection. Goodbye!\n");
         close(sockfd);
         close(newsockfd);
         return 0; 
     }     
-    
-
-    void HTTPResponse(char* input){
-    	bzero(input, 256);
-    	strncpy(input, "HTTP/1.1 404 OK\nConnection: close", 255);
-    } 
 }
+
+void sendHTTPResponse(char* input){
+    bzero(input, 256);
+    char* responseMessage = "HTTP/1.1 200 OK\r\nConnection: close";
+
+    strncpy(input, responseMessage, 4096);
+} 
