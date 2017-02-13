@@ -89,36 +89,44 @@ void sendHTTPResponse(char* request, char* response){
 	if (text_html_request_true){
 	  printf("\nwe did it\n");
 	  long fsize;
-	  FILE *filepointer = fopen("text.html", "rb");
+	  FILE *filepointer = fopen("text.html", "rb"); //Open file stream for the text.html file
+
 	  if (!filepointer){
 	  	perror("The text.html file cannot be opened.");
 	  	exit(1);
 	  }
-	  printf("File open successful\n");
 
-	  fsize = ftell(filepointer);
+	  fseek(filepointer, 0, SEEK_END); //Move "cursor" to the end of the file
+	  fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
+
 	  if (fsize == -1){
 	  	perror("The text.html file size cannot be retrieved.");
 	  	exit(1);
 	  }
 
-	  rewind(filepointer);
+	  rewind(filepointer); //Move cursor back to start
 
-	  char *html_data = (char*) malloc(fsize + 1);
+
+	  char *html_data = (char*) malloc(fsize); //Allocate the memory for the size of the html_data
+
+	  //printf("@@@%ld\n", fsize);
+
 	  if (!html_data){
 	  	perror("The file buffer could not be allocated in memory.");
 	  	exit(1);
 	  }
 
-	  if (fread(html_data, fsize, 1, filepointer) != 1){
+	  //fread(html_data, fsize, 1, filepointer) == 0;
+
+	  if (fread(&html_data, fsize, 1, filepointer) == 0){
 	  	perror("The file was not successfully read.");
 	  	exit(1);
 	  }
 
 
-	  printf("%s\n", html_data);
+	  //printf("!!!!!%s\n", html_data);
 
-	  fclose(filepointer);
+	  fclose(filepointer); //close the IO stream for the file
 	}
 	else if (picture_html_request_true){
 
