@@ -15,7 +15,7 @@ void error(char *msg)
 
 void sendHTTPResponse(char* request, int newsockfd);
 void sendHTMLFile(char* filename, int newsockfd);
-void sendImageFile(char* filename, int newsockfd);
+void sendImageFile(char* filename, int contentType, int newsockfd);
 void sendErrorResponse(int newsockfd);
 int KEEPALIVE = 1;
 int NUM_OF_REQUEST = 0;
@@ -95,22 +95,33 @@ void sendHTTPResponse(char* request, int newsockfd){
 	char* big_picture_image_request = "GET /bigpicture.jpeg HTTP/1.1\r\n";
 	char* big_picture_image_request_true = strstr(request, big_picture_image_request);
 
+	char* sample_image_request_gif = "GET /sample2.gif HTTP/1.1\r\n";
+	char* sample_image_request_gif_true = strstr(request, sample_image_request_gif);	
+
+	char* big_picture_image_request_gif = "GET /bigpicture.gif HTTP/1.1\r\n";
+	char* big_picture_image_request_gif_true = strstr(request, big_picture_image_request_gif);
+
+
 	if (text_html_request_true){
 	  sendHTMLFile("text.html", newsockfd);
 	}
 	else if (picture_html_request_true){
 	  sendHTMLFile("picture.html", newsockfd);
-	  //sendImageFile("sample2.jpg", newsockfd);
 	}
 	else if (sample_image_request_true){
-	  sendImageFile("sample2.jpg", newsockfd);
-		//KEEPALIVE = 0;
+	  sendImageFile("sample2.jpg", 1, newsockfd);
 	}
 	else if (big_picture_html_request_true){
 	  sendHTMLFile("bigpicture.html", newsockfd);
 	}
 	else if (big_picture_image_request_true){
-	  sendImageFile("bigpicture.jpeg", newsockfd);
+	  sendImageFile("bigpicture.jpeg", 1, newsockfd);
+	}
+	else if (sample_image_request_gif_true){
+	  sendImageFile("sample2.gif", 2, newsockfd);
+	}
+	else if (big_picture_image_request_gif_true){
+	  sendImageFile("bigpicture.gif", 2, newsockfd);
 	}
 	else{
 	  sendErrorResponse(newsockfd);
@@ -182,7 +193,7 @@ void sendHTMLFile(char* filename, int newsockfd){
 	  free(html_data);
 }
 
-void sendImageFile(char* filename, int newsockfd){
+void sendImageFile(char* filename, int contentType, int newsockfd){
 
 	  char* str = "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n";
 	  int len = strlen(str);
@@ -208,10 +219,16 @@ void sendImageFile(char* filename, int newsockfd){
 	  len = strlen(str);
 	  write(newsockfd,str,len);
 
-
+	  if (contentType == 1){
 	  str = "Content-Type: image/jpeg\r\n\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
+	  }
+	  else if (contentType == 2){
+	  str = "Content-Type: image/gif\r\n\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+	  }
 
 	  rewind(filepointer); //Move cursor back to start
 
