@@ -14,7 +14,9 @@ void error(char *msg)
 }
 
 void sendHTTPResponse(char* request, int newsockfd);
-void readHTMLFile(char* filename, int newsockfd);
+void sendHTMLFile(char* filename, int newsockfd);
+void sendImageFile(char* filename, int newsockfd);
+void sendErrorResponse(int newsockfd);
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
@@ -33,6 +35,9 @@ int main(int argc, char *argv[]){
     if (sockfd < 0) 
        error("ERROR opening socket");
 	
+	int option = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)); //this code allows the socket to bind even though it's in TIME_WAIT
+
 	bzero((char *) &serv_addr, sizeof(serv_addr));
 
 	serv_addr.sin_family = AF_INET;
@@ -66,13 +71,14 @@ int main(int argc, char *argv[]){
         printf("Closing connection. Goodbye!\n");
         close(sockfd);
         close(newsockfd);
+        printf("Closing connection. Goodbye!\n");
         return 0; 
     }     
 }
 
 void sendHTTPResponse(char* request, int newsockfd){
 
-	char* text_html_request = "GET /text33.html HTTP/1.1\r\n";
+	char* text_html_request = "GET /text.html HTTP/1.1\r\n";
 	char* text_html_request_true = strstr(request, text_html_request);
 
 	char* picture_html_request = "GET /picture.html HTTP/1.1\r\n";
@@ -83,20 +89,22 @@ void sendHTTPResponse(char* request, int newsockfd){
 
 
 	if (text_html_request_true){
-	  readHTMLFile("text.html", newsockfd);
+	  sendHTMLFile("text.html", newsockfd);
 	}
 	else if (picture_html_request_true){
-
+	  sendImageFile("sample2.jpg", newsockfd);
+	  sendHTMLFile("picture.html", newsockfd);
+	  
 	}
 	else if (big_picture_html_request_true){
 
 	}
 	else{
-
+	  sendErrorResponse(newsockfd);
 	}
 } 
 
-void readHTMLFile(char* filename, int newsockfd){
+void sendHTMLFile(char* filename, int newsockfd){
 
 	  char* str = "HTTP/1.1 200 OK\r\n";
 	  int len = strlen(str);
@@ -106,7 +114,7 @@ void readHTMLFile(char* filename, int newsockfd){
 	  FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
 
 	  if (!filepointer){
-	  	perror("The text.html file cannot be opened.");
+	  	perror("The html file cannot be opened.");
 	  	exit(1);
 	  }
 
@@ -114,15 +122,14 @@ void readHTMLFile(char* filename, int newsockfd){
 	  fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
 
 	  if (fsize == -1){
-	  	perror("The text.html file size cannot be retrieved.");
+	  	perror("The html file size cannot be retrieved.");
 	  	exit(1);
 	  }
 
 	  /**
-	  str = "Content-length: ";
+	  str = "Content-Length: ";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
-	  printf(" works here\n");
 
 	  char* size = (char*) fsize;
 	  len = strlen(size);
@@ -130,7 +137,7 @@ void readHTMLFile(char* filename, int newsockfd){
 	  printf(" works here\n");
 	  */
 
-	  str = "\r\nContent-type: text/html\r\n";
+	  str = "Content-Type: text/html; charset=utf-8\r\n\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
 
@@ -155,4 +162,71 @@ void readHTMLFile(char* filename, int newsockfd){
 	  fclose(filepointer); //close the IO stream for the file 
 
 	  free(html_data);
+}
+
+void sendImageFile(char* filename, int newsockfd){
+
+	  char* str = "HTTP/1.1 200 OK\r\n";
+	  int len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  long fsize;
+	  FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
+
+	  if (!filepointer){
+	  	perror("The image file cannot be opened.");
+	  	exit(1);
+	  }
+
+	  fseek(filepointer, 0, SEEK_END); //Move "cursor" to the end of the file
+	  fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
+
+	  if (fsize == -1){
+	  	perror("The image file size cannot be retrieved.");
+	  	exit(1);
+	  }
+
+	  /**
+	  str = "Content-length: ";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+	  printf(" works here\n");
+
+	  char* size = (char*) fsize;
+	  len = strlen(size);
+	  write(newsockfd,size,len);
+	  printf(" works here\n");
+	  */
+
+	  str = "Content-Type: image/jpeg\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  rewind(filepointer); //Move cursor back to start
+
+	  char *html_data = (char*) malloc(fsize); //Allocate the memory for the size of the html_data
+
+	  if (!html_data){
+	  	perror("The file buffer could not be allocated in memory.");
+	  	exit(1);
+	  }
+
+
+	  if (fread(html_data, fsize, 1, filepointer) == 0){
+	  	perror("The file was not successfully read.");
+	  	exit(1);
+	  }
+
+	  len = strlen(html_data);
+	  write(newsockfd,html_data,len);
+
+	  fclose(filepointer); //close the IO stream for the file 
+
+	  free(html_data);
+}
+
+void sendErrorResponse(int newsockfd){
+	char* str = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-type: text/html\r\n<html><body><h1>404 NOT FOUND</h2></body></html>";
+	int len = strlen(str);
+	write(newsockfd,str,len);
 }
