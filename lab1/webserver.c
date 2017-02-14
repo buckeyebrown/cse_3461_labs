@@ -59,14 +59,12 @@ int main(int argc, char *argv[]){
           2) the new socket descriptor will be used for subsequent communication with the newly connected client.
         */
         newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-		//printf("\nmadeithere3\n");
 
         if (newsockfd < 0) 
             error("ERROR on accept");
         
         int n;
         bzero(request,512);
-		//printf("\nmadeithere4\n");
 
         n = read(newsockfd,request,512); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
@@ -79,19 +77,6 @@ int main(int argc, char *argv[]){
     printf("Closing connection. Goodbye!\n");
     return 0;
 }
-/*
-GET /sample2.jpg HTTP/1.1
-Host: localhost:5434
-User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0
-Accept: 
-Accept-Language: en-US,en;q=0.5
-Accept-Encoding: gzip, deflate
-Referer: http://localhost:5434/picture.html
-DNT: 1
-Connection: keep-alive
-*/
-
-//sends a second GET request, need to know how to handle it
 
 void sendHTTPResponse(char* request, int newsockfd){
 
@@ -107,6 +92,8 @@ void sendHTTPResponse(char* request, int newsockfd){
 	char* big_picture_html_request = "GET /bigpicture.html HTTP/1.1\r\n";
 	char* big_picture_html_request_true = strstr(request, big_picture_html_request);
 
+	char* big_picture_image_request = "GET /bigpicture.jpeg HTTP/1.1\r\n";
+	char* big_picture_image_request_true = strstr(request, big_picture_image_request);
 
 	if (text_html_request_true){
 	  sendHTMLFile("text.html", newsockfd);
@@ -120,7 +107,10 @@ void sendHTTPResponse(char* request, int newsockfd){
 		//KEEPALIVE = 0;
 	}
 	else if (big_picture_html_request_true){
-
+	  sendHTMLFile("bigpicture.html", newsockfd);
+	}
+	else if (big_picture_image_request_true){
+	  sendImageFile("bigpicture.jpeg", newsockfd);
 	}
 	else{
 	  sendErrorResponse(newsockfd);
@@ -254,7 +244,6 @@ void sendImageFile(char* filename, int newsockfd){
 
 	  fclose(filepointer); //close the IO stream for the file 
 	  free(image_data);
-	  //KEEPALIVE = 0;
 }
 
 
