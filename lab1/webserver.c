@@ -17,6 +17,9 @@ void sendHTTPResponse(char* request, int newsockfd);
 void sendHTMLFile(char* filename, int newsockfd);
 void sendImageFile(char* filename, int newsockfd);
 void sendErrorResponse(int newsockfd);
+void sendHTMLFileWithImage(char* filename, char* imagename, int newsockfd);
+int KEEPALIVE = 1;
+int NUM_OF_REQUEST = 0;
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
@@ -47,8 +50,9 @@ int main(int argc, char *argv[]){
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
               error("ERROR on binding");
 
-    while(1){
-        listen(sockfd,5); // Listen for socket connections. Backlog queue (connections to wait) is 5
+
+    while(KEEPALIVE){
+    	listen(sockfd,5); // Listen for socket connections. Backlog queue (connections to wait) is 5
     	clilen = sizeof(cli_addr);
         /*accept function: 
           1) Block until a new connection is established
@@ -64,17 +68,38 @@ int main(int argc, char *argv[]){
         n = read(newsockfd,request,512); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
 
-		sendHTTPResponse(request, newsockfd);
+		printf("\n%s\n", request);
+
+		NUM_OF_REQUEST++;
+		printf("\n%i\n", NUM_OF_REQUEST);
+		sendHTTPResponse(request, newsockfd);    
+		close(sockfd);
 
         //n = write(newsockfd,response,1024); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
 
-        printf("Closing connection. Goodbye!\n");
-        close(sockfd);
-        close(newsockfd);
-        printf("Closing connection. Goodbye!\n");
-        return 0; 
-    }     
+        //close(sockfd);
+    	//close(newsockfd);
+    	//printf("Closing connection. Goodbye!\n");
+    	//return 0;
+    }  
+    close(sockfd);
+    close(newsockfd);
+    printf("Closing connection. Goodbye!\n");
+    return 0;
 }
+/*
+GET /sample2.jpg HTTP/1.1
+Host: localhost:5434
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0
+Accept: 
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://localhost:5434/picture.html
+DNT: 1
+Connection: keep-alive
+*/
+
+//sends a second GET request, need to know how to handle it
 
 void sendHTTPResponse(char* request, int newsockfd){
 
@@ -84,6 +109,9 @@ void sendHTTPResponse(char* request, int newsockfd){
 	char* picture_html_request = "GET /picture.html HTTP/1.1\r\n";
 	char* picture_html_request_true = strstr(request, picture_html_request);
 
+	char* sample_image_request = "GET /sample2.jpg HTTP/1.1\r\n";
+	char* sample_image_request_true = strstr(request, sample_image_request);
+
 	char* big_picture_html_request = "GET /bigpicture.html HTTP/1.1\r\n";
 	char* big_picture_html_request_true = strstr(request, big_picture_html_request);
 
@@ -92,9 +120,16 @@ void sendHTTPResponse(char* request, int newsockfd){
 	  sendHTMLFile("text.html", newsockfd);
 	}
 	else if (picture_html_request_true){
-	  sendImageFile("sample2.jpg", newsockfd);
 	  sendHTMLFile("picture.html", newsockfd);
+	  //sendImageFile("sample2.jpg", newsockfd);
 	  
+	  //sendHTMLFileWithImage("picture.html", "sample2.jpg", newsockfd);
+
+	}
+	else if (sample_image_request_true){
+	//  sendImageFile("sample2.jpg", newsockfd);
+		printf("\n\n!!!!!!\n\n");
+		KEEPALIVE = 0;
 	}
 	else if (big_picture_html_request_true){
 
@@ -104,9 +139,11 @@ void sendHTTPResponse(char* request, int newsockfd){
 	}
 } 
 
+
+
 void sendHTMLFile(char* filename, int newsockfd){
 
-	  char* str = "HTTP/1.1 200 OK\r\n";
+	  char* str = "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n";
 	  int len = strlen(str);
 	  write(newsockfd,str,len);
 
@@ -125,19 +162,22 @@ void sendHTMLFile(char* filename, int newsockfd){
 	  	perror("The html file size cannot be retrieved.");
 	  	exit(1);
 	  }
-
-	  /**
+	  
 	  str = "Content-Length: ";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
 
-	  char* size = (char*) fsize;
-	  len = strlen(size);
-	  write(newsockfd,size,len);
-	  printf(" works here\n");
-	  */
+	  char sizebuffer[64];
+	  int n = sprintf(sizebuffer, "%lu", fsize);
+	  if (n < 0){
+	  	perror("Error converting fsize to char array.");
+	  	exit(1);
+	  }
+	  len = strlen(sizebuffer);
+	  write(newsockfd,sizebuffer,len);
+	  
 
-	  str = "Content-Type: text/html; charset=utf-8\r\n\r\n";
+	  str = "\r\nContent-Type: text/html; charset=utf-8\r\n\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
 
@@ -166,7 +206,7 @@ void sendHTMLFile(char* filename, int newsockfd){
 
 void sendImageFile(char* filename, int newsockfd){
 
-	  char* str = "HTTP/1.1 200 OK\r\n";
+	  char* str = "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n";
 	  int len = strlen(str);
 	  write(newsockfd,str,len);
 
@@ -186,19 +226,87 @@ void sendImageFile(char* filename, int newsockfd){
 	  	exit(1);
 	  }
 
-	  /**
-	  str = "Content-length: ";
+	  str = "Transfer-Encoding: chunk\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
-	  printf(" works here\n");
 
-	  char* size = (char*) fsize;
-	  len = strlen(size);
-	  write(newsockfd,size,len);
-	  printf(" works here\n");
-	  */
 
-	  str = "Content-Type: image/jpeg\r\n";
+	  str = "Content-Type: image/jpeg\r\n\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  rewind(filepointer); //Move cursor back to start
+
+	  char *image_data = (char*) malloc(fsize); //Allocate the memory for the size of the image_data
+
+	  if (!image_data){
+	  	perror("The file buffer could not be allocated in memory.");
+	  	exit(1);
+	  }
+
+	  int j = 1;
+	  while(j){
+		  char chunk[1024];
+		  int n = fread(image_data, 1024, 1, filepointer);
+		  if (n > 0){
+		  	write(newsockfd,image_data,1024);
+		  	}
+		  else{
+		  	write(newsockfd,image_data,1024);
+		  	if (feof(filepointer)){
+		  		printf("End of file.\n");
+		  		j = 0;
+		  	}
+		  	if (ferror(filepointer)){
+		  		printf("Error reading this file.\n");
+		  		j = 0;
+		  	}
+		  }
+	  }
+
+	  fclose(filepointer); //close the IO stream for the file 
+	  free(image_data);
+	  KEEPALIVE = 0;
+}
+
+
+void sendHTMLFileWithImage(char* filename, char* imagename, int newsockfd){
+
+	  char* str = "HTTP/1.1 200 OK\r\n";
+	  int len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  long fsize;
+	  FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
+
+	  if (!filepointer){
+	  	perror("The html file cannot be opened.");
+	  	exit(1);
+	  }
+
+	  fseek(filepointer, 0, SEEK_END); //Move "cursor" to the end of the file
+	  fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
+
+	  if (fsize == -1){
+	  	perror("The html file size cannot be retrieved.");
+	  	exit(1);
+	  }
+	  
+	  str = "Content-Length: ";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  char sizebuffer[64];
+	  int n = sprintf(sizebuffer, "%lu", fsize);
+	  if (n < 0){
+	  	perror("Error converting fsize to char array.");
+	  	exit(1);
+	  }
+	  len = strlen(sizebuffer);
+	  write(newsockfd,sizebuffer,len);
+	  
+
+	  str = "\r\nContent-Type: text/html; charset=utf-8\r\n\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
 
@@ -223,10 +331,77 @@ void sendImageFile(char* filename, int newsockfd){
 	  fclose(filepointer); //close the IO stream for the file 
 
 	  free(html_data);
+
+	  /*
+	  * Send Image now
+	  */
+	  str = "HTTP/1.1 200 OK\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  fsize;
+	  filepointer = fopen(imagename, "rb"); //Open file stream for the text.html file
+
+	  if (!filepointer){
+	  	perror("The image file cannot be opened.");
+	  	exit(1);
+	  }
+
+	  fseek(filepointer, 0, SEEK_END); //Move "cursor" to the end of the file
+	  fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
+
+	  if (fsize == -1){
+	  	perror("The image file size cannot be retrieved.");
+	  	exit(1);
+	  }
+
+	  str = "Transfer-Encoding: chunk\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+
+	  str = "Content-Type: image/jpeg\r\n\r\n";
+	  len = strlen(str);
+	  write(newsockfd,str,len);
+
+	  rewind(filepointer); //Move cursor back to start
+
+	  char *image_data = (char*) malloc(fsize); //Allocate the memory for the size of the image_data
+
+	  if (!image_data){
+	  	perror("The file buffer could not be allocated in memory.");
+	  	exit(1);
+	  }
+
+	  int j = 1;
+	  while(j){
+		  char chunk[1024];
+		  int n = fread(image_data, 1024, 1, filepointer);
+		  if (n > 0){
+		  	write(newsockfd,image_data,1024);
+		  	}
+		  else{
+		  	write(newsockfd,image_data,1024);
+		  	if (feof(filepointer)){
+		  		printf("End of file.\n");
+		  		j = 0;
+		  	}
+		  	if (ferror(filepointer)){
+		  		printf("Error reading this file.\n");
+		  		j = 0;
+		  	}
+		  }
+	  }
+
+	  fclose(filepointer); //close the IO stream for the file 
+	  free(image_data);
+
+	  KEEPALIVE = 0;
 }
 
+
 void sendErrorResponse(int newsockfd){
-	char* str = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-type: text/html\r\n<html><body><h1>404 NOT FOUND</h2></body></html>";
+	char* str = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-type: text/html\r\n\r\n<html><body><h1>404 NOT FOUND</h2></body></html>";
 	int len = strlen(str);
 	write(newsockfd,str,len);
 }
