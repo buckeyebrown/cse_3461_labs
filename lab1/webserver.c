@@ -59,8 +59,6 @@ int main(int argc, char *argv[]){
         n = read(newsockfd,request,512); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
 
-		printf("%s\n", request);
-
 		sendHTTPResponse(request, newsockfd);
 
         //n = write(newsockfd,response,1024); //NOTE: write function returns the number of bytes actually sent out Ñ> this might be less than the number you told it to send
@@ -135,10 +133,7 @@ void readHTMLFile(char* filename, int newsockfd){
 	  str = "\r\nContent-type: text/html\r\n";
 	  len = strlen(str);
 	  write(newsockfd,str,len);
-	  printf(" works here\n");
 
-	  //responseMessage = responseMessage + "Content-length: " + &fsize + "\r\n"; //print the fsize as the content length
-	  //responseMessage = responseMessage + "Content-type: text/html\r\n";
 	  rewind(filepointer); //Move cursor back to start
 
 	  char *html_data = (char*) malloc(fsize); //Allocate the memory for the size of the html_data
@@ -148,22 +143,16 @@ void readHTMLFile(char* filename, int newsockfd){
 	  	exit(1);
 	  }
 
-	  //fread(html_data, fsize, 1, filepointer) == 0;
 
 	  if (fread(html_data, fsize, 1, filepointer) == 0){
 	  	perror("The file was not successfully read.");
 	  	exit(1);
 	  }
 
-	  printf("\n\n\n");
 	  len = strlen(html_data);
-	  printf("%i\n", len);
 	  write(newsockfd,html_data,len);
-	  printf(" works here\n");
 
 	  fclose(filepointer); //close the IO stream for the file 
-	  printf(" works here\n");
 
 	  free(html_data);
-	  //responseMessage = responseMessage + html_data;
 }
