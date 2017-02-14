@@ -49,37 +49,30 @@ int main(int argc, char *argv[]){
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
               error("ERROR on binding");
 
+    	listen(sockfd,5); // Listen for socket connections. Backlog queue (connections to wait) is 5
+    	clilen = sizeof(cli_addr);
 
     while(KEEPALIVE){
-    	listen(sockfd,5); // Listen for socket connections. Backlog queue (connections to wait) is 5
-    			printf("\nmadeithere1\n");
-    	clilen = sizeof(cli_addr);
-    			printf("\nmadeithere2\n");
 
         /*accept function: 
           1) Block until a new connection is established
           2) the new socket descriptor will be used for subsequent communication with the newly connected client.
         */
         newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-		printf("\nmadeithere3\n");
+		//printf("\nmadeithere3\n");
 
         if (newsockfd < 0) 
             error("ERROR on accept");
         
         int n;
         bzero(request,512);
-		printf("\nmadeithere4\n");
+		//printf("\nmadeithere4\n");
 
         n = read(newsockfd,request,512); //Read is a block function. It will read at most 255 bytes
 		if (n < 0) error("ERROR reading from socket");
-		printf("\nmadeithere5\n");
-
-		printf("\n%s\n", request);
-
-		NUM_OF_REQUEST++;
-		printf("\n%i\n", NUM_OF_REQUEST);
-		sendHTTPResponse(request, newsockfd);    
-		printf("\nmadeithere6\n");
+		sendHTTPResponse(request, newsockfd); 
+		    close(newsockfd);
+   
     }  
     close(sockfd);
     close(newsockfd);
@@ -121,13 +114,10 @@ void sendHTTPResponse(char* request, int newsockfd){
 	else if (picture_html_request_true){
 	  sendHTMLFile("picture.html", newsockfd);
 	  //sendImageFile("sample2.jpg", newsockfd);
-	  
-
 	}
 	else if (sample_image_request_true){
-	//  sendImageFile("sample2.jpg", newsockfd);
-		printf("\n\n!!!!!!\n\n");
-		KEEPALIVE = 0;
+	  sendImageFile("sample2.jpg", newsockfd);
+		//KEEPALIVE = 0;
 	}
 	else if (big_picture_html_request_true){
 
@@ -264,7 +254,7 @@ void sendImageFile(char* filename, int newsockfd){
 
 	  fclose(filepointer); //close the IO stream for the file 
 	  free(image_data);
-	  KEEPALIVE = 0;
+	  //KEEPALIVE = 0;
 }
 
 
