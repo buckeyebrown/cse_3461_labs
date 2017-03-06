@@ -1,3 +1,11 @@
+/* 
+   Dylan Brown
+   Lab 1
+   CSE 2431
+
+   A simple HTTP server.
+*/
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -17,8 +25,6 @@ void sendHTTPResponse(char* request, int newsockfd);
 void sendHTMLFile(char* filename, int newsockfd);
 void sendImageFile(char* filename, int contentType, int newsockfd);
 void sendErrorResponse(int newsockfd);
-int KEEPALIVE = 1;
-int NUM_OF_REQUEST = 0;
 
 int main(int argc, char *argv[]){
     int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
@@ -52,12 +58,12 @@ int main(int argc, char *argv[]){
     	listen(sockfd,5); // Listen for socket connections. Backlog queue (connections to wait) is 5
     	clilen = sizeof(cli_addr);
 
-    while(KEEPALIVE){
+    while(1){
 
-        /*accept function: 
           1) Block until a new connection is established
-          2) the new socket descriptor will be used for subsequent communication with the newly connected client.
+        /*accept function: 
         */
+          2) the new socket descriptor will be used for subsequent communication with the newly connected client.
         newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 
         if (newsockfd < 0) 
@@ -80,6 +86,7 @@ int main(int argc, char *argv[]){
 
 void sendHTTPResponse(char* request, int newsockfd){
 
+	//Check for a specific substring in the request
 	char* text_html_request = "GET /text.html HTTP/1.1\r\n";
 	char* text_html_request_true = strstr(request, text_html_request);
 
@@ -102,6 +109,7 @@ void sendHTTPResponse(char* request, int newsockfd){
 	char* big_picture_image_request_gif_true = strstr(request, big_picture_image_request_gif);
 
 
+	//if the substring exists, handle the particular request
 	if (text_html_request_true){
 	  sendHTMLFile("text.html", newsockfd);
 	}
@@ -241,7 +249,6 @@ void sendImageFile(char* filename, int contentType, int newsockfd){
 
 	  int j = 1;
 	  while(j){
-		  char chunk[1024];
 		  int n = fread(image_data, 1024, 1, filepointer);
 		  if (n > 0){
 		  	write(newsockfd,image_data,1024);
