@@ -3,6 +3,7 @@
    Lab 2
    CSE 2431
 
+   UDP receiver code.
  */
 
 //receiver == client
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
      }
     int sockfd, portno;
     char* sender_hostname, filename;
-    socklen_t clilen, addrlen;
+    socklen_t addrlen;
     struct sockaddr_in serv_addr;
     struct hostent *server; //contains tons of information, including the server's IP address
     char filebuffer[PACKET_SIZE];

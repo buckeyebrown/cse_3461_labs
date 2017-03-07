@@ -3,6 +3,7 @@
    Lab 2
    CSE 2431
 
+   UDP client code.
  */
 
 
@@ -26,6 +27,8 @@
 //True
 #define TRUE 1
 
+void error(char* msg);
+
 int main(int argc, char *argv[])
 {
 	 if (argc != 2) {
@@ -33,30 +36,49 @@ int main(int argc, char *argv[])
          exit(1);
      }
 
-	  int sockfd; //descriptors rturn from socket and accept system calls
-    int portno = atoi(argv[1]);
-
-
-
+     /*sockaddr_in: Structure Containing an Internet Address*/
+     /*sockaddr_in: Structure Containing an Internet Address*/
+    struct sockaddr_in serv_addr, cli_addr;
+    int sockfd, portno;
     socklen_t clilen;
     char filebuffer[PACKET_SIZE];
-    struct sockaddr_in serv_addr, cli_addr;
-    struct hostent *server; //contains tons of information, including the server's IP address
-    socklen_t addrlen = sizeof(client_addr);
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET; //initialize server's address
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
-    serv_addr.sin_port = htons(portno);
 
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); //create a new socket
+    portno = atoi(argv[1]);
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
     if (sockfd < 0) 
         error("ERROR opening socket");
 
-    if(sendto(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
-       error("ERROR on send to.\n");
+
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY; //for the server the IP address is always the address that the server is running on
+    serv_addr.sin_port = htons(portno); //convert from host to network byte order
+
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
+       error("ERROR on binding");
+
+    int recvlen;
+
+    while(TRUE){
+      clilen = sizeof(cli_addr);
+
+      recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &addrlen);
+       printf("Received %d bytes.\n",recvlen);
+       if (recvlen < 0){
+        error("ERROR receiving packet.\n");
+       }
+
+      if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
+        error("ERROR on send to.\n");
+      }
     }
 
-
 	return 0;
+}
+
+void error(char *msg)
+{
+    perror(msg);
+    exit(1);
 }
