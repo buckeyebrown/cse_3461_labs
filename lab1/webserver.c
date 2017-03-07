@@ -60,10 +60,11 @@ int main(int argc, char *argv[]){
 
     while(1){
 
+/**
           1) Block until a new connection is established
-        /*accept function: 
-        */
-          2) the new socket descriptor will be used for subsequent communication with the newly connected client.
+        accept function: 
+        
+          2) the new socket descriptor will be used for subsequent communication with the newly connected client.*/
         newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 
         if (newsockfd < 0) 
