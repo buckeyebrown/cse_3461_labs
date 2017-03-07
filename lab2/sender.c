@@ -14,6 +14,15 @@
 #include <ctype.h>
 #include <unistd.h>
 
+//1 KB for data
+#define DATA 1024
+//Header: Source Port # (2 bytes), Dest Port # (2 bytes), Length (2 bytes)
+#define HEADER 6
+//Header + Data
+#define PACKET_SIZE 1030
+//True
+#define TRUE 1
+
 int main(int argc, char *argv[])
 {
 	 if (argc != 4) {
@@ -21,11 +30,22 @@ int main(int argc, char *argv[])
          exit(1);
      }
 
-	int sockfd, newsockfd; //descriptors rturn from socket and accept system calls
+	int sockfd; //descriptors rturn from socket and accept system calls
 	char* sender_hostname = argv[1];
     int portno = atoi(argv[2]); // port number 5434
     char* filename = argv[3];
     socklen_t clilen;
+    char filebuffer[1024];
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t addrlen = sizeof(client_addr);
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0); //create a new socket
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+
+    if(sendto(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
+       error("ERROR on send to.\n");
+    }
 
 
 	return 0;
