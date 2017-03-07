@@ -5,6 +5,9 @@
 
  */
 
+
+//sender = server
+
 #include <stdio.h>
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
@@ -25,19 +28,26 @@
 
 int main(int argc, char *argv[])
 {
-	 if (argc != 4) {
-         fprintf(stderr,"ERROR, the receiver requires 4 arguments\n");
+	 if (argc != 2) {
+         fprintf(stderr,"ERROR, the sender requires 2 arguments\n");
          exit(1);
      }
 
-	int sockfd; //descriptors rturn from socket and accept system calls
-	char* sender_hostname = argv[1];
-    int portno = atoi(argv[2]); // port number 5434
-    char* filename = argv[3];
+	  int sockfd; //descriptors rturn from socket and accept system calls
+    int portno = atoi(argv[1]);
+
+
+
     socklen_t clilen;
-    char filebuffer[1024];
+    char filebuffer[PACKET_SIZE];
     struct sockaddr_in serv_addr, cli_addr;
+    struct hostent *server; //contains tons of information, including the server's IP address
     socklen_t addrlen = sizeof(client_addr);
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET; //initialize server's address
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+    serv_addr.sin_port = htons(portno);
+
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0); //create a new socket
     if (sockfd < 0) 

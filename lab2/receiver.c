@@ -5,6 +5,8 @@
 
  */
 
+//receiver == client
+
 #include <stdio.h>
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
@@ -30,47 +32,43 @@ int main(int argc, char *argv[])
 	 if (argc != 4) {
          error("ERROR, the receiver requires 4 arguments\n");
      }
+    int sockfd, portno;
+    char* sender_hostname, filename;
+    socklen_t clilen, addrlen;
+    struct sockaddr_in serv_addr;
+    struct hostent *server; //contains tons of information, including the server's IP address
+    char filebuffer[PACKET_SIZE];
 
-	char* sender_hostname = argv[1];
-    int portno = atoi(argv[2]); // port number 5434
-    char* filename = argv[3];
-    int sockfd; //descriptors return from socket and accept system calls
-    socklen_t clilen;
-    struct sockaddr_in serv_addr, cli_addr;
-    socklen_t addrlen = sizeof(client_addr);
+    sender_hostname = argv[1];
+    portno = atoi(argv[2]);
+    filename = argv[3];
 
-    char filebuffer[1024];
-
-    /*Create a new socket
-    AF_INET: Address Domain is Internet 
-    SOCK_STREAM: Socket Type is STREAM Socket */
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sockfd < 0) 
        error("ERROR opening socket");
 
-	int option = 1;
-	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)); //this code allows the socket to bind even though it's in TIME_WAIT
+    server = gethostbyname(argv[1]); //takes a string like "www.yahoo.com", and returns a struct hostent which contains information, as IP address, address type, the length of the addresses...
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
 
-	bzero((char *) &serv_addr, sizeof(serv_addr));
-
-	serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY; //for the server the IP address is always the address that the server is running on
-    serv_addr.sin_port = htons(portno); //convert from host to network byte order
-
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
-              error("ERROR on binding");
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET; //initialize server's address
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+    serv_addr.sin_port = htons(portno);
 
     int recvlen;
 
     while(TRUE){
+     	 if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
+    	 	error("ERROR on send to.\n");
+    	 }
+
     	 recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &addrlen);
     	 printf("Received %d bytes.\n",recvlen);
     	 if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");
-    	 }
-
-    	 if(sendto(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
-    	 	error("ERROR on send to.\n");
     	 }
 
     }
