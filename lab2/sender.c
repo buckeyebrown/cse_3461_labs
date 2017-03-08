@@ -26,8 +26,11 @@
 #define PACKET_SIZE 1030
 //True
 #define TRUE 1
+//False
+#define FALSE 0
 
 void error(char* msg);
+void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
 
 int main(int argc, char *argv[])
 {
@@ -61,7 +64,7 @@ int main(int argc, char *argv[])
     int recvlen;
 
     char filename[64];
-     clilen = sizeof(client_addr);
+    clilen = sizeof(client_addr);
 
     recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
     printf("Received %d bytes.\n",recvlen);
@@ -71,10 +74,13 @@ int main(int argc, char *argv[])
 
     printf("File name sent to the server is: %s\n", filename);
 
+    sendFile(filename, sockfd, client_addr, clilen);
+
+    printf("here\n");
     while(TRUE){
 
-      recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &clilen);
-      printf("Received %d bytes.\n",recvlen);
+      //recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &clilen);
+      //printf("Received %d bytes.\n",recvlen);
       if (recvlen < 0){
        error("ERROR receiving packet.\n");
       }
@@ -99,4 +105,60 @@ void error(char *msg)
 {
     perror(msg);
     exit(1);
+}
+
+void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
+
+    long fsize;
+    FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
+
+    if (!filepointer){
+      perror("The file cannot be opened.");
+      exit(1);
+    }
+
+    fseek(filepointer, 0, SEEK_END); //Move "cursor" to the end of the file
+    fsize = ftell(filepointer); //Get the position of the cursor as the length of the file
+
+    if (fsize == -1){
+      perror("The file size cannot be retrieved.");
+      exit(1);
+    }
+
+    rewind(filepointer); //Move cursor back to start
+
+    char *file_data = (char*) malloc(fsize); //Allocate the memory for the size of the file_data
+
+    if (!file_data){
+      perror("The file buffer could not be allocated in memory.");
+      exit(1);
+    }
+
+    int cond = TRUE;
+    while(cond){
+      int n = fread(file_data, PACKET_SIZE, 1, filepointer);
+      if (n > 0){
+        if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
+          error("ERROR on send to.\n");
+        }
+        //write(sockfd,file_data,PACKET_SIZE);
+        }
+      else{
+        if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
+          error("ERROR on send to.\n");
+        }
+        //write(sockfd,file_data,PACKET_SIZE);
+        if (feof(filepointer)){
+          printf("End of file.\n");
+          cond = FALSE;
+        }
+        if (ferror(filepointer)){
+          printf("Error reading this file.\n");
+          cond = FALSE;
+        }
+      }
+    }
+
+    fclose(filepointer); //close the IO stream for the file 
+    free(file_data);
 }
