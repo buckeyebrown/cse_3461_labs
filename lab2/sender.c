@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
      /*sockaddr_in: Structure Containing an Internet Address*/
      /*sockaddr_in: Structure Containing an Internet Address*/
-    struct sockaddr_in serv_addr, cli_addr;
+    struct sockaddr_in serv_addr, client_addr;
     int sockfd, portno;
     socklen_t clilen;
     char filebuffer[PACKET_SIZE];
@@ -60,22 +60,35 @@ int main(int argc, char *argv[])
 
     int recvlen;
 
+    char filename[64];
+     clilen = sizeof(client_addr);
+
+    recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
+    printf("Received %d bytes.\n",recvlen);
+    if (recvlen < 0){
+       error("ERROR receiving packet.\n");
+    }
+
+    printf("File name sent to the server is: %s\n", filename);
+
     while(TRUE){
-      clilen = sizeof(cli_addr);
 
-      recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &addrlen);
-       printf("Received %d bytes.\n",recvlen);
-       if (recvlen < 0){
-        error("ERROR receiving packet.\n");
-       }
+      recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &clilen);
+      printf("Received %d bytes.\n",recvlen);
+      if (recvlen < 0){
+       error("ERROR receiving packet.\n");
+      }
 
-      if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
+      //char filename[64];
+      //memcpy(filename, buf, recvlen);
+
+      if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
         error("ERROR on send to.\n");
       }
 
-      bzero(request,PACKET_SIZE);
+      bzero(filebuffer,PACKET_SIZE);
 
-      n = read(sockfd,filebuffer,PACKET_SIZE); //Read is a block function. It will read at most 255 bytes
+      int n = read(sockfd,filebuffer,PACKET_SIZE); //Read is a block function. It will read at most 255 bytes
        if (n < 0) error("ERROR reading from socket");
     }
   close(sockfd);

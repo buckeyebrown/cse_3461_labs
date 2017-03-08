@@ -12,6 +12,7 @@
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
+#include <netdb.h>      // define structures like hostent
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
          error("ERROR, the receiver requires 4 arguments\n");
      }
     int sockfd, portno;
-    char* sender_hostname, filename;
+    char* sender_hostname;
     socklen_t addrlen;
     struct sockaddr_in serv_addr;
     struct hostent *server; //contains tons of information, including the server's IP address
@@ -43,7 +44,8 @@ int main(int argc, char *argv[])
 
     sender_hostname = argv[1];
     portno = atoi(argv[2]);
-    filename = argv[3];
+    char filename[64];
+    memcpy(filename, argv[3], 64);
 
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sockfd < 0) 
@@ -62,17 +64,36 @@ int main(int argc, char *argv[])
 
     int recvlen;
 
+    //Send the filename to the client
+    if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
+     	error("ERROR on send to.\n");
+    }    
+
+    int n = 0;
+    //while waiting for a response
+    while(n == 0){
+    	recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    	printf("Received %d bytes.\n",recvlen);
+    	if (recvlen < 0){
+    	 	error("ERROR receiving packet.\n");
+    	}
+    	else if (recvlen > 0){
+    		n = atoi(filebuffer);
+    	}
+    }
+
+    bzero(filebuffer, PACKET_SIZE);
     while(TRUE){
-     	 if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
+     	 if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
     	 	error("ERROR on send to.\n");
     	 }
 
-    	 recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &addrlen);
+    	 recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	 printf("Received %d bytes.\n",recvlen);
     	 if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");
     	 }
-    	 sendFIle(filename, sockfd);
+    	 //sendFile(filename, sockfd);
     }
     close(sockfd);
 	return 0;
@@ -114,17 +135,15 @@ void sendFile(char* filename, int sockfd){
 	  while(TRUE){
 		  int n = fread(file_data, PACKET_SIZE, 1, filepointer);
 		  if (n > 0){
-		  	write(newsockfd,file_data,PACKET_SIZE);
+		  	write(sockfd,file_data,PACKET_SIZE);
 		  	}
 		  else{
-		  	write(newsockfd,file_data,PACKET_SIZE);
+		  	write(sockfd,file_data,PACKET_SIZE);
 		  	if (feof(filepointer)){
 		  		printf("End of file.\n");
-		  		j = 0;
 		  	}
 		  	if (ferror(filepointer)){
 		  		printf("Error reading this file.\n");
-		  		j = 0;
 		  	}
 		  }
 	  }
