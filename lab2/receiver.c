@@ -63,10 +63,11 @@ int main(int argc, char *argv[])
     serv_addr.sin_port = htons(portno);
 
     int recvlen;
+    addrlen = sizeof(serv_addr);
 
     //Send the filename to the client
     if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
-     	error("ERROR on send to.\n");
+     	error("ERROR on send to. First time.\n");
     }    
 
     int n = 0;
@@ -84,6 +85,7 @@ int main(int argc, char *argv[])
 
     bzero(filebuffer, PACKET_SIZE);
     while(TRUE){
+
      	 if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
     	 	error("ERROR on send to.\n");
     	 }
