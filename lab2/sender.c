@@ -72,8 +72,13 @@ int main(int argc, char *argv[])
       if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, addrlen) < 0){
         error("ERROR on send to.\n");
       }
-    }
 
+      bzero(request,PACKET_SIZE);
+
+      n = read(sockfd,filebuffer,PACKET_SIZE); //Read is a block function. It will read at most 255 bytes
+       if (n < 0) error("ERROR reading from socket");
+    }
+  close(sockfd);
 	return 0;
 }
 

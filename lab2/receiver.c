@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
     	 if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");
     	 }
-
+    	 sendFIle(filename, sockfd);
     }
-
+    close(sockfd);
 	return 0;
 }
 
