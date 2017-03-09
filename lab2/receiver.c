@@ -20,15 +20,15 @@
 
 //1 KB for data
 #define DATA 1024
-//Header: Source Port # (2 bytes), Dest Port # (2 bytes), Length (2 bytes)
-#define HEADER 6
+//Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
+#define HEADER 2
 //Header + Data
-#define PACKET_SIZE 1030
+#define PACKET_SIZE 1026
 //True
 #define TRUE 1
 
 void error(char* msg);
-void sendFile(char* filename, int sockfd);
+char* concat(const char *string_1, const char *string_2);
 
 int main(int argc, char *argv[])
 {
@@ -80,17 +80,22 @@ int main(int argc, char *argv[])
     	}
     	else if (recvlen > 0){
     		n = atoi(filebuffer);
-    		
+    		printf("%d\n",n);
     	}
     }
 
+    char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
+    FILE* filepointer = fopen(newfilename, "wb");
+    free(newfilename); //free malloc from concat string
+    fwrite(filebuffer, sizeof(filebuffer), PACKET_SIZE, filepointer);
+    fclose(filepointer);
     bzero(filebuffer, PACKET_SIZE);
-    /**
+    
     while(TRUE){
 
-     	 if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
-    	 	error("ERROR on send to.\n");
-    	 }
+     	 //if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
+    	 //	error("ERROR on send to.\n");
+    	 //}
 
     	 recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	 printf("Received %d bytes.\n",recvlen);
@@ -99,7 +104,7 @@ int main(int argc, char *argv[])
     	 }
     	 //sendFile(filename, sockfd);
     }
-    */
+    
     close(sockfd);
 	return 0;
 }
@@ -108,4 +113,16 @@ void error(char *msg)
 {
     perror(msg);
     exit(1);
+}
+
+
+char* concat(const char *string_1, const char *string_2)
+{
+    char *result_string = malloc(strlen(string_1)+strlen(string_2)+1);
+    if (result_string == NULL){
+    	error("String concat failed at memory allocation.\n");
+    }
+    strcpy(result_string, string_1);
+    strcat(result_string, string_2);
+    return result_string;
 }

@@ -20,10 +20,10 @@
 
 //1 KB for data
 #define DATA 1024
-//Header: Source Port # (2 bytes), Dest Port # (2 bytes), Length (2 bytes)
-#define HEADER 6
+//Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
+#define HEADER 2
 //Header + Data
-#define PACKET_SIZE 1030
+#define PACKET_SIZE 1026
 //True
 #define TRUE 1
 //False
@@ -31,6 +31,7 @@
 
 void error(char* msg);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
+int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned char maxSequenceNumber);
 
 int main(int argc, char *argv[])
 {
@@ -77,6 +78,7 @@ int main(int argc, char *argv[])
     sendFile(filename, sockfd, client_addr, clilen);
 
     printf("here\n");
+    /**
     while(TRUE){
 
       //recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &clilen);
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
 
       int n = read(sockfd,filebuffer,PACKET_SIZE); //Read is a block function. It will read at most 255 bytes
        if (n < 0) error("ERROR reading from socket");
-    }
+    }*/
   close(sockfd);
 	return 0;
 }
@@ -135,15 +137,18 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     }
 
     int cond = TRUE;
+    int j = 0;
     while(cond){
-      int n = fread(file_data, PACKET_SIZE, 1, filepointer);
+      int n = fread(file_data, DATA, 1, filepointer);
       if (n > 0){
+        createDataHeader(file_data, j, 9);
         if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
           error("ERROR on send to.\n");
         }
         //write(sockfd,file_data,PACKET_SIZE);
         }
       else{
+        createDataHeader(file_data, j, 9);
         if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
           error("ERROR on send to.\n");
         }
@@ -157,8 +162,26 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
           cond = FALSE;
         }
       }
+      j++;
     }
 
     fclose(filepointer); //close the IO stream for the file 
     free(file_data);
+}
+
+int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned char maxSequenceNumber){
+  //declare a header of size HEADER
+  char header[HEADER];
+  //char packet[PACKET_SIZE];
+  //printf("%d\n", sizeof(header));
+  printf("$$%d\n", filebuffer[0]);
+  header[0] = sequenceNumber;
+  header[1] = maxSequenceNumber;
+
+  memcpy(filebuffer, header, HEADER);
+
+  printf("$$%d\n", filebuffer[0]);
+  printf("$$%d\n", filebuffer[1]);
+  printf("$$%d\n\n\n", filebuffer[2]);
+
 }
