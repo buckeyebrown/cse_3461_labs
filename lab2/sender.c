@@ -23,7 +23,7 @@
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
 #define HEADER 2
 //Header + Data
-#define PACKET_SIZE 1026
+#define PACKET_SIZE 1030
 //True
 #define TRUE 1
 //False
@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     int sockfd, portno;
     socklen_t clilen;
     char filebuffer[PACKET_SIZE];
+    bzero(filebuffer, PACKET_SIZE);
 
 
     portno = atoi(argv[1]);
@@ -65,10 +66,13 @@ int main(int argc, char *argv[])
     int recvlen;
 
     char filename[64];
+    bzero(filename, 64);
     clilen = sizeof(client_addr);
 
     recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
     printf("Received %d bytes.\n",recvlen);
+        printf("\n\n%s\n\n", filename);
+
     if (recvlen < 0){
        error("ERROR receiving packet.\n");
     }
@@ -139,7 +143,7 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     int cond = TRUE;
     int j = 0;
     while(cond){
-      int n = fread(file_data, DATA, 1, filepointer);
+      int n = fread(file_data, PACKET_SIZE, 1, filepointer);
       if (n > 0){
         createDataHeader(file_data, j, 9);
         if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){

@@ -23,7 +23,7 @@
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
 #define HEADER 2
 //Header + Data
-#define PACKET_SIZE 1026
+#define PACKET_SIZE 1030
 //True
 #define TRUE 1
 
@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
     sender_hostname = argv[1];
     portno = atoi(argv[2]);
     char filename[64];
+    bzero(filename, 64);
     memcpy(filename, argv[3], 64);
 
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -66,11 +67,15 @@ int main(int argc, char *argv[])
     addrlen = sizeof(serv_addr);
 
     //Send the filename to the client
+
+    printf("\n%lu\n!\n", strlen(filename));
+
     if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
      	error("ERROR on send to. First time.\n");
     }    
 
     int n = 0;
+
     //while waiting for a response
     while(n == 0){
     	recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
