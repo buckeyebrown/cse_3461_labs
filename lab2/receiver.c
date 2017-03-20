@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     int n = 0;
 
     //while waiting for a response
-    while(n == 0){
-    	recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    //while(n == 0){
+    	recvlen = recvfrom(sockfd, filebuffer, 15, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	printf("Received %d bytes.\n",recvlen);
     	if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");
@@ -87,12 +87,12 @@ int main(int argc, char *argv[])
     		n = atoi(filebuffer);
     		printf("%d\n",n);
     	}
-    }
+    //}
 
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
     free(newfilename); //free malloc from concat string
-    fwrite(filebuffer, sizeof(filebuffer), PACKET_SIZE, filepointer);
+    fwrite(filebuffer, 1, 15, filepointer);
     fclose(filepointer);
     bzero(filebuffer, PACKET_SIZE);
     
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     	 //	error("ERROR on send to.\n");
     	 //}
 
-    	 recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    	 recvlen = recvfrom(sockfd, filebuffer, 15, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	 printf("Received %d bytes.\n",recvlen);
     	 if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");

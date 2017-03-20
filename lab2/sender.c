@@ -21,9 +21,9 @@
 //1 KB for data
 #define DATA 1024
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
-#define HEADER 2
+#define HEADER 4
 //Header + Data
-#define PACKET_SIZE 1030
+#define PACKET_SIZE 1028
 //True
 #define TRUE 1
 //False
@@ -32,6 +32,14 @@
 void error(char* msg);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
 int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned char maxSequenceNumber);
+
+typedef struct packetHeader {
+  char sequenceNumber;
+  int size;
+  char lastSequenceNumber;
+
+} packetHeader;
+
 
 int main(int argc, char *argv[])
 {
@@ -47,7 +55,11 @@ int main(int argc, char *argv[])
     socklen_t clilen;
     char filebuffer[PACKET_SIZE];
     bzero(filebuffer, PACKET_SIZE);
-
+    packetHeader header_sample;
+    header_sample.sequenceNumber = 1;
+    header_sample.size = 10000;
+    header_sample.lastSequenceNumber = 9;
+    printf("\nhey2\n%lu\n", sizeof(header_sample));
 
     portno = atoi(argv[1]);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
@@ -118,6 +130,7 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     long fsize;
     FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
 
+
     if (!filepointer){
       perror("The file cannot be opened.");
       exit(1);
@@ -143,8 +156,13 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     int cond = TRUE;
     int j = 0;
     while(cond){
-      int n = fread(file_data, PACKET_SIZE, 1, filepointer);
-      if (n > 0){
+      int readVal = 0;
+      int last = 0;
+
+      readVal = fread(file_data, 1, DATA, filepointer);
+
+
+      if (readVal > 0){
         createDataHeader(file_data, j, 9);
         if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
           error("ERROR on send to.\n");
@@ -157,6 +175,7 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
           error("ERROR on send to.\n");
         }
         //write(sockfd,file_data,PACKET_SIZE);
+        last = feof(filepointer);
         if (feof(filepointer)){
           printf("End of file.\n");
           cond = FALSE;
