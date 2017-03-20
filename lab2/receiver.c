@@ -82,6 +82,8 @@ int main(int argc, char *argv[])
     char dataBuffer[DATA];
     //while waiting for a response
     //while(n == 0){
+        		int sequenceNumber, maxSequenceNumber, datasize;
+
     	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	printf("Received %d bytes.\n",recvlen);
     	if (recvlen < 0){
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
     	else if (recvlen > 0){
     	//	n = atoi(filebuffer);
     	//	printf("%d\n",n);
-    		int sequenceNumber, maxSequenceNumber, datasize;
+    		//int sequenceNumber, maxSequenceNumber, datasize;
     		readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
 
     	}
@@ -99,7 +101,7 @@ int main(int argc, char *argv[])
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
     free(newfilename); //free malloc from concat string
-    fwrite(dataBuffer, 1, 15, filepointer);
+    fwrite(dataBuffer, 1, datasize, filepointer);
     fclose(filepointer);
     bzero(packetBuffer, PACKET_SIZE);
     bzero(dataBuffer, DATA);
@@ -143,8 +145,8 @@ char* concat(const char *string_1, const char *string_2)
 
 void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
 	char seqNumArr[1];
-	char maxSeqNumArr[1];
-	char dataSizeArry[4];
+	char maxSeqNumArr[2];
+	char dataSizeArry[3];
 
 	int offset = 0;
 
@@ -153,18 +155,18 @@ void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber
 	offset += 1;
 	printf("\nThe Sequence number: %d", *sequenceNumber);
 
-	memcpy(maxSeqNumArr, packetBuffer + offset, 1);
+	memcpy(maxSeqNumArr, packetBuffer + offset, 2);
 	*sequenceNumber = atoi(maxSeqNumArr);
-	offset += 1;
+	offset += 2;
 		printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
 
 
-	memcpy(dataSizeArry, packetBuffer + offset, 4);
+	memcpy(dataSizeArry, packetBuffer + offset, 3);
 	*datasize = atoi(dataSizeArry);
-	offset += 4;
+	offset += 3;
 	printf("\nThe Data Size: %d\n", *datasize);
 
-	memcpy(dataBuffer, packetBuffer + offset, *datasize);
+	memcpy(dataBuffer, packetBuffer + HEADER, *datasize);
 
 
 }
