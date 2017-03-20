@@ -21,9 +21,9 @@
 //1 KB for data
 #define DATA 1024
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
-#define HEADER 4
+#define HEADER 6
 //Header + Data
-#define PACKET_SIZE 1028
+#define PACKET_SIZE 1030
 //True
 #define TRUE 1
 //False
@@ -31,12 +31,13 @@
 
 void error(char* msg);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
-int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned char maxSequenceNumber);
+int createDataHeader(char* filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize);
+void makePacket(char* file_data, int sequenceNumber, FILE* filepointer);
 
 typedef struct packetHeader {
-  char sequenceNumber;
+  int sequenceNumber;
   int size;
-  char lastSequenceNumber;
+  int lastSequenceNumber;
 
 } packetHeader;
 
@@ -146,13 +147,22 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 
     rewind(filepointer); //Move cursor back to start
 
-    char *file_data = (char*) malloc(fsize); //Allocate the memory for the size of the file_data
+    //char *file_data = (char*) malloc(fsize); //Allocate the memory for the size of the file_data
 
-    if (!file_data){
-      perror("The file buffer could not be allocated in memory.");
-      exit(1);
+    char packetBuffer[PACKET_SIZE];
+
+    //if (!file_data){
+    //  perror("The file buffer could not be allocated in memory.");
+    //  exit(1);
+    //}
+
+    makePacket(packetBuffer, 1, filepointer);
+
+    if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
+      error("ERROR on send to.\n");
     }
 
+/**
     int cond = TRUE;
     int j = 0;
     while(cond){
@@ -190,11 +200,16 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 
     fclose(filepointer); //close the IO stream for the file 
     free(file_data);
+    */
 }
 
-int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned char maxSequenceNumber){
-  //declare a header of size HEADER
-  char header[HEADER];
+int createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize){
+  //declare a header of size HEADER, 6 because each int = 2 bytes
+  char headerBuf[HEADER];
+  sprintf(headerBuf, "%02d%d%03d", sequenceNumber, maxSequenceNumber, filesize);
+  memcpy(filebuffer, headerBuf, HEADER);
+
+  /**
   //char packet[PACKET_SIZE];
   //printf("%d\n", sizeof(header));
   printf("$$%d\n", filebuffer[0]);
@@ -206,5 +221,20 @@ int createDataHeader(char* filebuffer, unsigned char sequenceNumber, unsigned ch
   printf("$$%d\n", filebuffer[0]);
   printf("$$%d\n", filebuffer[1]);
   printf("$$%d\n\n\n", filebuffer[2]);
+  **/
 
+}
+
+void makePacket(char *file_data, int sequenceNumber, FILE* filepointer){
+  int readVal = 0;
+  int last = 0;
+
+  //Read, but skip over the header bytes
+  //make sure file_data is a buffer of size PACKET_SIZE
+  //figure a way to determine file position/
+  fseek(filepointer, 1, SEEK_SET);
+  readVal = fread(file_data + HEADER, 1, DATA, filepointer);
+  last = feof(filepointer);
+
+  createDataHeader(file_data, sequenceNumber, last, readVal);
 }
