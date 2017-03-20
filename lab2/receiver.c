@@ -21,7 +21,7 @@
 //1 KB for data
 #define DATA 1024
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
-#define HEADER 2
+#define HEADER 6
 //Header + Data
 #define PACKET_SIZE 1030
 //True
@@ -29,6 +29,7 @@
 
 void error(char* msg);
 char* concat(const char *string_1, const char *string_2);
+void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber, int* maxSequenceNumber, int* datasize);
 
 int main(int argc, char *argv[])
 {
@@ -76,26 +77,34 @@ int main(int argc, char *argv[])
 
     int n = 0;
 
+
+    char packetBuffer[PACKET_SIZE];
+    char dataBuffer[DATA];
     //while waiting for a response
     //while(n == 0){
-    	recvlen = recvfrom(sockfd, filebuffer, 15, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	printf("Received %d bytes.\n",recvlen);
     	if (recvlen < 0){
     	 	error("ERROR receiving packet.\n");
     	}
     	else if (recvlen > 0){
-    		n = atoi(filebuffer);
-    		printf("%d\n",n);
+    	//	n = atoi(filebuffer);
+    	//	printf("%d\n",n);
+    		int sequenceNumber, maxSequenceNumber, datasize;
+    		readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
+
     	}
     //}
 
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
     free(newfilename); //free malloc from concat string
-    fwrite(filebuffer, 1, 15, filepointer);
+    fwrite(dataBuffer, 1, 15, filepointer);
     fclose(filepointer);
-    bzero(filebuffer, PACKET_SIZE);
+    bzero(packetBuffer, PACKET_SIZE);
+    bzero(dataBuffer, DATA);
     
+    /**
     while(TRUE){
 
      	 //if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
@@ -109,7 +118,7 @@ int main(int argc, char *argv[])
     	 }
     	 //sendFile(filename, sockfd);
     }
-    
+    */
     close(sockfd);
 	return 0;
 }
@@ -130,4 +139,32 @@ char* concat(const char *string_1, const char *string_2)
     strcpy(result_string, string_1);
     strcat(result_string, string_2);
     return result_string;
+}
+
+void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
+	char seqNumArr[1];
+	char maxSeqNumArr[1];
+	char dataSizeArry[4];
+
+	int offset = 0;
+
+	memcpy(seqNumArr, packetBuffer, 1);
+	*sequenceNumber = atoi(seqNumArr);
+	offset += 1;
+	printf("\nThe Sequence number: %d", *sequenceNumber);
+
+	memcpy(maxSeqNumArr, packetBuffer + offset, 1);
+	*sequenceNumber = atoi(maxSeqNumArr);
+	offset += 1;
+		printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
+
+
+	memcpy(dataSizeArry, packetBuffer + offset, 4);
+	*datasize = atoi(dataSizeArry);
+	offset += 4;
+	printf("\nThe Data Size: %d\n", *datasize);
+
+	memcpy(dataBuffer, packetBuffer + offset, *datasize);
+
+
 }

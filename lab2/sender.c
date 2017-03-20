@@ -206,8 +206,11 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 int createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize){
   //declare a header of size HEADER, 6 because each int = 2 bytes
   char headerBuf[HEADER];
-  sprintf(headerBuf, "%02d%d%03d", sequenceNumber, maxSequenceNumber, filesize);
+  sprintf(headerBuf, "%d%d%04d", sequenceNumber, maxSequenceNumber, filesize);
   memcpy(filebuffer, headerBuf, HEADER);
+  printf("\nThe sequence number is: %d\n", sequenceNumber);
+    printf("\nThe MAX sequence number is: %d\n", maxSequenceNumber);
+  printf("\nThe file size is: %d\n", filesize);
 
   /**
   //char packet[PACKET_SIZE];
@@ -226,15 +229,15 @@ int createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber
 }
 
 void makePacket(char *file_data, int sequenceNumber, FILE* filepointer){
-  int readVal = 0;
+  int datasize = 0;
   int last = 0;
 
   //Read, but skip over the header bytes
   //make sure file_data is a buffer of size PACKET_SIZE
   //figure a way to determine file position/
-  fseek(filepointer, 1, SEEK_SET);
-  readVal = fread(file_data + HEADER, 1, DATA, filepointer);
+  fseek(filepointer, 0, SEEK_SET);
+  datasize = fread(file_data + HEADER, 1, DATA, filepointer);
   last = feof(filepointer);
 
-  createDataHeader(file_data, sequenceNumber, last, readVal);
+  createDataHeader(file_data, sequenceNumber, last, datasize);
 }
