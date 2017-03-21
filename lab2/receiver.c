@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     free(newfilename); //free malloc from concat string
     fwrite(dataBuffer, 1, datasize, filepointer);
     int j = 0;
-    while(j < maxSequenceNumber + 1){
+    while(j < maxSequenceNumber){
     	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	printf("Received %d bytes.\n",recvlen);
     	if (recvlen < 0){

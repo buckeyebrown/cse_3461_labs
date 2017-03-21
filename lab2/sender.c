@@ -159,7 +159,7 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 
     int sequenceNumber = 0;
     char packetBuffer[PACKET_SIZE];
-    while (sequenceNumber < maxSeqNum){
+    while (sequenceNumber < maxSeqNum + 1){
       makePacket(packetBuffer, sequenceNumber, filepointer, maxSeqNum);
       if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
        error("ERROR on send to.\n");
