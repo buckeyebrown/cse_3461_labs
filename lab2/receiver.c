@@ -33,13 +33,13 @@ void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber
 
 int main(int argc, char *argv[])
 {
-	 if (argc != 4) {
-         error("ERROR, the receiver requires 4 arguments\n");
-     }
-    int sockfd, portno;
-    char* sender_hostname;
-    socklen_t addrlen;
-    struct sockaddr_in serv_addr;
+	if (argc != 4) {
+		error("ERROR, the receiver requires 4 arguments\n");
+	}
+	int sockfd, portno;
+	char* sender_hostname;
+	socklen_t addrlen;
+	struct sockaddr_in serv_addr;
     struct hostent *server; //contains tons of information, including the server's IP address
     char filebuffer[PACKET_SIZE];
 
@@ -49,14 +49,14 @@ int main(int argc, char *argv[])
     bzero(filename, 64);
     memcpy(filename, argv[3], 64);
 
-	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sockfd < 0) 
-       error("ERROR opening socket");
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) 
+    	error("ERROR opening socket");
 
     server = gethostbyname(sender_hostname); //takes a string like "www.yahoo.com", and returns a struct hostent which contains information, as IP address, address type, the length of the addresses...
     if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
+    	fprintf(stderr,"ERROR, no such host\n");
+    	exit(0);
     }
 
     bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     printf("\n%lu\n!\n", strlen(filename));
 
     if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
-     	error("ERROR on send to. First time.\n");
+    	error("ERROR on send to. First time.\n");
     }    
 
     int n = 0;
@@ -82,30 +82,47 @@ int main(int argc, char *argv[])
     char dataBuffer[DATA];
     //while waiting for a response
     //while(n == 0){
-        		int sequenceNumber, maxSequenceNumber, datasize;
+    int sequenceNumber, maxSequenceNumber, datasize;
 
-    	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
-    	printf("Received %d bytes.\n",recvlen);
-    	if (recvlen < 0){
-    	 	error("ERROR receiving packet.\n");
-    	}
-    	else if (recvlen > 0){
+    recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    printf("Received %d bytes.\n",recvlen);
+    if (recvlen < 0){
+    	error("ERROR receiving packet.\n");
+    }
+    else if (recvlen > 0){
     	//	n = atoi(filebuffer);
     	//	printf("%d\n",n);
     		//int sequenceNumber, maxSequenceNumber, datasize;
-    		readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
+    	readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
 
-    	}
+    }
     //}
 
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
     free(newfilename); //free malloc from concat string
     fwrite(dataBuffer, 1, datasize, filepointer);
-    fclose(filepointer);
-    bzero(packetBuffer, PACKET_SIZE);
-    bzero(dataBuffer, DATA);
-    
+    int j = 0;
+    while(j < maxSequenceNumber + 1){
+    	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
+    	printf("Received %d bytes.\n",recvlen);
+    	if (recvlen < 0){
+    		error("ERROR receiving packet.\n");
+    	}
+    	else if (recvlen > 0){
+    		readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
+    	}
+    	fwrite(dataBuffer, 1, datasize, filepointer);
+    	j++;
+    }
+    	fclose(filepointer);
+    	bzero(packetBuffer, PACKET_SIZE);
+    	bzero(dataBuffer, DATA);
+
+    	close(sockfd);
+    	return 0;
+    }
+
     /**
     while(TRUE){
 
@@ -121,52 +138,49 @@ int main(int argc, char *argv[])
     	 //sendFile(filename, sockfd);
     }
     */
-    close(sockfd);
-	return 0;
-}
 
-void error(char *msg)
-{
-    perror(msg);
-    exit(1);
-}
-
-
-char* concat(const char *string_1, const char *string_2)
-{
-    char *result_string = malloc(strlen(string_1)+strlen(string_2)+1);
-    if (result_string == NULL){
-    	error("String concat failed at memory allocation.\n");
+    void error(char *msg)
+    {
+    	perror(msg);
+    	exit(1);
     }
-    strcpy(result_string, string_1);
-    strcat(result_string, string_2);
-    return result_string;
-}
-
-void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
-	char seqNumArr[1];
-	char maxSeqNumArr[2];
-	char dataSizeArry[3];
-
-	int offset = 0;
-
-	memcpy(seqNumArr, packetBuffer, 1);
-	*sequenceNumber = atoi(seqNumArr);
-	offset += 1;
-	printf("\nThe Sequence number: %d", *sequenceNumber);
-
-	memcpy(maxSeqNumArr, packetBuffer + offset, 2);
-	*sequenceNumber = atoi(maxSeqNumArr);
-	offset += 2;
-		printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
 
 
-	memcpy(dataSizeArry, packetBuffer + offset, 3);
-	*datasize = atoi(dataSizeArry);
-	offset += 3;
-	printf("\nThe Data Size: %d\n", *datasize);
+    char* concat(const char *string_1, const char *string_2)
+    {
+    	char *result_string = malloc(strlen(string_1)+strlen(string_2)+1);
+    	if (result_string == NULL){
+    		error("String concat failed at memory allocation.\n");
+    	}
+    	strcpy(result_string, string_1);
+    	strcat(result_string, string_2);
+    	return result_string;
+    }
 
-	memcpy(dataBuffer, packetBuffer + HEADER, *datasize);
+    void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
+    	char seqNumArr[1];
+    	char maxSeqNumArr[1];
+    	char dataSizeArry[4];
+
+    	int offset = 0;
+
+    	memcpy(seqNumArr, packetBuffer, 1);
+    	*sequenceNumber = atoi(seqNumArr);
+    	offset += 1;
+    	printf("\nThe Sequence number: %d", *sequenceNumber);
+
+    	memcpy(maxSeqNumArr, packetBuffer + offset, 1);
+    	*maxSequenceNumber = atoi(maxSeqNumArr);
+    	offset += 1;
+    	printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
 
 
-}
+    	memcpy(dataSizeArry, packetBuffer + offset, 4);
+    	*datasize = atoi(dataSizeArry);
+    	offset += 4;
+    	printf("\nThe Data Size: %d\n", *datasize);
+
+    	memcpy(dataBuffer, packetBuffer + HEADER, *datasize);
+
+
+    }
