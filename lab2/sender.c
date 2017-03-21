@@ -32,15 +32,8 @@
 
 void error(char* msg);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
-int createDataHeader(char* filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize);
+void createDataHeader(char* filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize);
 void makePacket(char* file_data, int sequenceNumber, FILE* filepointer, int maxSeqNum);
-
-typedef struct packetHeader {
-  int sequenceNumber;
-  int size;
-  int lastSequenceNumber;
-
-} packetHeader;
 
 
 int main(int argc, char *argv[])
@@ -51,17 +44,11 @@ int main(int argc, char *argv[])
  }
 
      /*sockaddr_in: Structure Containing an Internet Address*/
-     /*sockaddr_in: Structure Containing an Internet Address*/
  struct sockaddr_in serv_addr, client_addr;
  int sockfd, portno;
  socklen_t clilen;
  char filebuffer[PACKET_SIZE];
  bzero(filebuffer, PACKET_SIZE);
- packetHeader header_sample;
- header_sample.sequenceNumber = 1;
- header_sample.size = 10000;
- header_sample.lastSequenceNumber = 9;
- printf("\nhey2\n%lu\n", sizeof(header_sample));
 
  portno = atoi(argv[1]);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
@@ -85,8 +72,6 @@ int main(int argc, char *argv[])
 
    recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
    printf("Received %d bytes.\n",recvlen);
-   printf("\n\n%s\n\n", filename);
-
    if (recvlen < 0){
      error("ERROR receiving packet.\n");
    }
@@ -95,28 +80,6 @@ int main(int argc, char *argv[])
 
    sendFile(filename, sockfd, client_addr, clilen);
 
-   printf("here\n");
-    /**
-    while(TRUE){
-
-      //recvlen = recvfrom(sockfd, filebuffer, 1024, 0, (struct sockaddr*)&client_addr, &clilen);
-      //printf("Received %d bytes.\n",recvlen);
-      if (recvlen < 0){
-       error("ERROR receiving packet.\n");
-      }
-
-      //char filename[64];
-      //memcpy(filename, buf, recvlen);
-
-      if(sendto(sockfd, filebuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
-        error("ERROR on send to.\n");
-      }
-
-      bzero(filebuffer,PACKET_SIZE);
-
-      int n = read(sockfd,filebuffer,PACKET_SIZE); //Read is a block function. It will read at most 255 bytes
-       if (n < 0) error("ERROR reading from socket");
-    }*/
    close(sockfd);
    return 0;
  }
@@ -167,53 +130,9 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
      sequenceNumber++;
    }
 
-    //if (!file_data){
-    //  perror("The file buffer could not be allocated in memory.");
-    //  exit(1);
-    //}
-
-/**
-    int cond = TRUE;
-    int j = 0;
-    while(cond){
-      int readVal = 0;
-      int last = 0;
-
-      readVal = fread(file_data, 1, DATA, filepointer);
-
-
-      if (readVal > 0){
-        createDataHeader(file_data, j, 9);
-        if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
-          error("ERROR on send to.\n");
-        }
-        //write(sockfd,file_data,PACKET_SIZE);
-        }
-      else{
-        createDataHeader(file_data, j, 9);
-        if(sendto(sockfd, file_data, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen) < 0){
-          error("ERROR on send to.\n");
-        }
-        //write(sockfd,file_data,PACKET_SIZE);
-        last = feof(filepointer);
-        if (feof(filepointer)){
-          printf("End of file.\n");
-          cond = FALSE;
-        }
-        if (ferror(filepointer)){
-          printf("Error reading this file.\n");
-          cond = FALSE;
-        }
-      }
-      j++;
-    }
-
-    fclose(filepointer); //close the IO stream for the file 
-    free(file_data);
-    */
  }
 
- int createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize){
+ void createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize){
   //declare a header of size HEADER, 6 because each int = 2 bytes
   char headerBuf[HEADER];
   sprintf(headerBuf, "%d%d%04d", sequenceNumber, maxSequenceNumber, filesize);
@@ -222,25 +141,10 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
   printf("\nThe MAX sequence number is: %d\n", maxSequenceNumber);
   printf("\nThe file size is: %d\n", filesize);
 
-  /**
-  //char packet[PACKET_SIZE];
-  //printf("%d\n", sizeof(header));
-  printf("$$%d\n", filebuffer[0]);
-  header[0] = sequenceNumber;
-  header[1] = maxSequenceNumber;
-
-  memcpy(filebuffer, header, HEADER);
-
-  printf("$$%d\n", filebuffer[0]);
-  printf("$$%d\n", filebuffer[1]);
-  printf("$$%d\n\n\n", filebuffer[2]);
-  **/
-
 }
 
 void makePacket(char *file_data, int sequenceNumber, FILE* filepointer, int maxSeqNum){
   int datasize = 0;
-  int last = 0;
 
   //Read, but skip over the header bytes
   //make sure file_data is a buffer of size PACKET_SIZE
@@ -250,7 +154,6 @@ void makePacket(char *file_data, int sequenceNumber, FILE* filepointer, int maxS
 
   fseek(filepointer, filePosition, SEEK_SET);
   datasize = fread(file_data + HEADER, 1, DATA, filepointer);
-  last = feof(filepointer);
 
   createDataHeader(file_data, sequenceNumber, maxSeqNum, datasize);
 }
