@@ -17,7 +17,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-
+#include <time.h>
 
 //1 KB for data
 #define DATA 1024
@@ -31,15 +31,15 @@
 #define FALSE 0
 
 void error(char* msg);
-void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
+void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss);
 void createDataHeader(char* filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize);
 void makePacket(char* file_data, int sequenceNumber, FILE* filepointer, int maxSeqNum);
 
 
 int main(int argc, char *argv[])
 {
-  if (argc != 2) {
-   fprintf(stderr,"ERROR, the sender requires 1 argument\n");
+  if (argc != 3) {
+   fprintf(stderr,"ERROR, the sender requires 2 arguments.\n");
    exit(1);
  }
 
@@ -47,50 +47,49 @@ int main(int argc, char *argv[])
  struct sockaddr_in serv_addr, client_addr;
  int sockfd, portno;
  socklen_t clilen;
- char filebuffer[PACKET_SIZE];
- bzero(filebuffer, PACKET_SIZE);
+ int probOfLoss = atof(argv[2]) * 100;
 
  portno = atoi(argv[1]);
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
-    if (sockfd < 0) 
-      error("ERROR opening socket");
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
+  if (sockfd < 0) 
+    error("ERROR opening socket");
 
 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY; //for the server the IP address is always the address that the server is running on
-    serv_addr.sin_port = htons(portno); //convert from host to network byte order
+  bzero((char *) &serv_addr, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = INADDR_ANY; //for the server the IP address is always the address that the server is running on
+  serv_addr.sin_port = htons(portno); //convert from host to network byte order
 
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
-     error("ERROR on binding");
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
+   error("ERROR on binding");
 
-   int recvlen;
+ int recvlen;
 
-   char filename[64];
-   bzero(filename, 64);
-   clilen = sizeof(client_addr);
+ char filename[64];
+ bzero(filename, 64);
+ clilen = sizeof(client_addr);
 
-   recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
-   printf("Received %d bytes.\n",recvlen);
-   if (recvlen < 0){
-     error("ERROR receiving packet.\n");
-   }
-
-   printf("File name sent to the server is: %s\n", filename);
-
-   sendFile(filename, sockfd, client_addr, clilen);
-
-   close(sockfd);
-   return 0;
+ recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
+ printf("Received %d bytes.\n",recvlen);
+ if (recvlen < 0){
+   error("ERROR receiving packet.\n");
  }
 
- void error(char *msg)
- {
+ printf("File name sent to the server is: %s\n", filename);
+
+ sendFile(filename, sockfd, client_addr, clilen, probOfLoss);
+
+ close(sockfd);
+ return 0;
+}
+
+void error(char *msg)
+{
   perror(msg);
   exit(1);
 }
 
-void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
+void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss){
 
   long fsize;
     FILE *filepointer = fopen(filename, "rb"); //Open file stream for the text.html file
@@ -119,13 +118,20 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     rewind(filepointer); //Move cursor back to start
 
     //char *file_data = (char*) malloc(fsize); //Allocate the memory for the size of the file_data
-
+    srand(time(NULL));
     int sequenceNumber = 0;
     char packetBuffer[PACKET_SIZE];
     while (sequenceNumber < maxSeqNum + 1){
       makePacket(packetBuffer, sequenceNumber, filepointer, maxSeqNum);
-      if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
-       error("ERROR on send to.\n");
+      int randomVal = rand() % 100;
+      printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
+      if (randomVal > probOfLoss){
+        if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
+         error("ERROR on send to.\n");
+       }
+     }
+     else{
+      printf("Error, packet %d of %d was lost.\n", sequenceNumber, maxSeqNum);
      }
      sequenceNumber++;
    }
@@ -137,9 +143,9 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
   char headerBuf[HEADER];
   sprintf(headerBuf, "%d%d%04d", sequenceNumber, maxSequenceNumber, filesize);
   memcpy(filebuffer, headerBuf, HEADER);
-  printf("\nThe sequence number is: %d\n", sequenceNumber);
-  printf("\nThe MAX sequence number is: %d\n", maxSequenceNumber);
-  printf("\nThe file size is: %d\n", filesize);
+  //printf("\nThe sequence number is: %d\n", sequenceNumber);
+  //printf("\nThe MAX sequence number is: %d\n", maxSequenceNumber);
+  //printf("\nThe file size is: %d\n", filesize);
 
 }
 

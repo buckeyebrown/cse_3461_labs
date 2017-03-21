@@ -26,6 +26,8 @@
 #define PACKET_SIZE 1030
 //True
 #define TRUE 1
+//False
+#define FALSE 0
 
 void error(char* msg);
 char* concat(const char *string_1, const char *string_2);
@@ -41,7 +43,6 @@ int main(int argc, char *argv[])
 	socklen_t addrlen;
 	struct sockaddr_in serv_addr;
     struct hostent *server; //contains tons of information, including the server's IP address
-    char filebuffer[PACKET_SIZE];
 
     sender_hostname = argv[1];
     portno = atoi(argv[2]);
@@ -69,20 +70,15 @@ int main(int argc, char *argv[])
 
     //Send the filename to the client
 
-    printf("\n%lu\n!\n", strlen(filename));
-
     if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
     	error("ERROR on send to. First time.\n");
     }    
 
-    int n = 0;
-
 
     char packetBuffer[PACKET_SIZE];
     char dataBuffer[DATA];
-    //while waiting for a response
-    //while(n == 0){
     int sequenceNumber, maxSequenceNumber, datasize;
+    int packetsReceived = 0;
 
     recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     printf("Received %d bytes.\n",recvlen);
@@ -90,20 +86,16 @@ int main(int argc, char *argv[])
     	error("ERROR receiving packet.\n");
     }
     else if (recvlen > 0){
-    	//	n = atoi(filebuffer);
-    	//	printf("%d\n",n);
-    		//int sequenceNumber, maxSequenceNumber, datasize;
     	readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
-
+    	packetsReceived++;
     }
-    //}
 
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
     free(newfilename); //free malloc from concat string
     fwrite(dataBuffer, 1, datasize, filepointer);
-    int j = 0;
-    while(j < maxSequenceNumber){
+    int j = TRUE;
+    while(j){
     	recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     	printf("Received %d bytes.\n",recvlen);
     	if (recvlen < 0){
@@ -111,9 +103,19 @@ int main(int argc, char *argv[])
     	}
     	else if (recvlen > 0){
     		readHeaderAndData(packetBuffer, dataBuffer, &sequenceNumber, &maxSequenceNumber, &datasize);
+    		packetsReceived++;
     	}
     	fwrite(dataBuffer, 1, datasize, filepointer);
-    	j++;
+    	if(sequenceNumber == maxSequenceNumber){
+    		j = FALSE;
+    	}
+    }
+
+    if (packetsReceived == maxSequenceNumber + 1){
+    	printf("Received %d out of %d packets. Success.\n", packetsReceived, maxSequenceNumber+1);
+    }
+    else{
+        	printf("Received %d out of %d packets. Error.\n", packetsReceived, maxSequenceNumber+1);	
     }
     	fclose(filepointer);
     	bzero(packetBuffer, PACKET_SIZE);
@@ -122,22 +124,6 @@ int main(int argc, char *argv[])
     	close(sockfd);
     	return 0;
     }
-
-    /**
-    while(TRUE){
-
-     	 //if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
-    	 //	error("ERROR on send to.\n");
-    	 //}
-
-    	 recvlen = recvfrom(sockfd, filebuffer, 15, 0, (struct sockaddr*)&serv_addr, &addrlen);
-    	 printf("Received %d bytes.\n",recvlen);
-    	 if (recvlen < 0){
-    	 	error("ERROR receiving packet.\n");
-    	 }
-    	 //sendFile(filename, sockfd);
-    }
-    */
 
     void error(char *msg)
     {
