@@ -22,18 +22,25 @@
 //1 KB for data
 #define DATA 1024
 //Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
-#define HEADER 6
+#define HEADER 7
 //Header + Data
-#define PACKET_SIZE 1030
+#define PACKET_SIZE 1031
 //True
 #define TRUE 1
 //False
 #define FALSE 0
+//Data Header Type
+#define DATA_TYPE 1
+//ACK Header Type
+#define ACK_TYPE 2
+
 
 void error(char* msg);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss);
-void createDataHeader(char* filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize);
-void makePacket(char* file_data, int sequenceNumber, FILE* filepointer, int maxSeqNum);
+void createDataHeader(char* filebuffer, int headerType, int sequenceNumber, int maxSequenceNumber, int filesize);
+void makePacket(char* file_data, int headerType, int sequenceNumber, FILE* filepointer, int maxSeqNum);
+void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize);
+int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen);
 
 
 int main(int argc, char *argv[])
@@ -122,12 +129,18 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     int sequenceNumber = 0;
     char packetBuffer[PACKET_SIZE];
     while (sequenceNumber < maxSeqNum + 1){
-      makePacket(packetBuffer, sequenceNumber, filepointer, maxSeqNum);
+      makePacket(packetBuffer, DATA_TYPE, sequenceNumber, filepointer, maxSeqNum);
       int randomVal = rand() % 100;
       printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
       if (randomVal > probOfLoss){
         if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
          error("ERROR on send to.\n");
+       }
+       int q = FALSE;
+       while(!q){
+            q = waitForAck(sockfd,client_addr, clilen);
+              printf("MADE IT HERE TOO\n");
+
        }
      }
      else{
@@ -138,10 +151,10 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 
  }
 
- void createDataHeader(char *filebuffer, int sequenceNumber, int maxSequenceNumber, int filesize){
+ void createDataHeader(char *filebuffer, int headerType, int sequenceNumber, int maxSequenceNumber, int filesize){
   //declare a header of size HEADER, 6 because each int = 2 bytes
   char headerBuf[HEADER];
-  sprintf(headerBuf, "%d%d%04d", sequenceNumber, maxSequenceNumber, filesize);
+  sprintf(headerBuf, "%d%d%d%04d", headerType, sequenceNumber, maxSequenceNumber, filesize);
   memcpy(filebuffer, headerBuf, HEADER);
   //printf("\nThe sequence number is: %d\n", sequenceNumber);
   //printf("\nThe MAX sequence number is: %d\n", maxSequenceNumber);
@@ -149,11 +162,11 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 
 }
 
-void makePacket(char *file_data, int sequenceNumber, FILE* filepointer, int maxSeqNum){
+void makePacket(char *file_data, int headerType, int sequenceNumber, FILE* filepointer, int maxSeqNum){
   int datasize = 0;
 
   //Read, but skip over the header bytes
-  //make sure file_data is a buffer of size PACKET_SIZE
+  //make sure file_data is a buffer of size PACKET_SIZEPACKET_SIZE
   //figure a way to determine file position/
   int filePosition = sequenceNumber * DATA;
   //sequence number * 1024 bytes, starting at 0
@@ -161,5 +174,55 @@ void makePacket(char *file_data, int sequenceNumber, FILE* filepointer, int maxS
   fseek(filepointer, filePosition, SEEK_SET);
   datasize = fread(file_data + HEADER, 1, DATA, filepointer);
 
-  createDataHeader(file_data, sequenceNumber, maxSeqNum, datasize);
+  createDataHeader(file_data, DATA_TYPE, sequenceNumber, maxSeqNum, datasize);
 }
+
+int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
+  int recvlen, packetType, sequenceNumber, maxSequenceNumber, datasize;
+  char ack[HEADER];
+
+  recvlen = recvfrom(sockfd, ack, HEADER, 0, (struct sockaddr*)&client_addr, &clilen);
+  printf("Received %d bytes.\n",recvlen);
+  if (recvlen < 0){
+   error("ERROR receiving packet.\n");
+  }
+  else{
+    readHeaderAndData(ack, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
+    if (packetType == ACK_TYPE){
+      printf("ACK Successfully received. For packet %d out of %d.\n", sequenceNumber, maxSequenceNumber);
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+    void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
+      char packetTypeArr[2];
+      char seqNumArr[1];
+      char maxSeqNumArr[1];
+      char dataSizeArry[4];
+
+      int offset = 0;
+
+      memcpy(packetTypeArr, packetBuffer + offset, 2);
+      *packetType = atoi(packetTypeArr);
+      offset += 2;
+      printf("\nThe packet type number is: %d", *packetType);
+
+      memcpy(seqNumArr, packetBuffer + offset, 1);
+      *sequenceNumber = atoi(seqNumArr);
+      offset += 1;
+      printf("\nThe Sequence number: %d", *sequenceNumber);
+
+      memcpy(maxSeqNumArr, packetBuffer + offset, 1);
+      *maxSequenceNumber = atoi(maxSeqNumArr);
+      offset += 1;
+      printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
+
+
+      memcpy(dataSizeArry, packetBuffer + offset, 4);
+      *datasize = atoi(dataSizeArry);
+      offset += 4;
+      printf("\nThe Data Size: %d\n", *datasize);
+
+    }
