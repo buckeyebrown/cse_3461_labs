@@ -139,8 +139,6 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
        int q = FALSE;
        while(!q){
             q = waitForAck(sockfd,client_addr, clilen);
-              printf("MADE IT HERE TOO\n");
-
        }
      }
      else{
