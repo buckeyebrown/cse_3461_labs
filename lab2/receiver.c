@@ -35,8 +35,8 @@
 
 void error(char* msg);
 char* concat(const char *string_1, const char *string_2);
-void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize);
-void sendAck(int *sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd);
+int readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* maxSequenceNumber, int* datasize);
+void sendAck(int sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd);
 
 
 int main(int argc, char *argv[])
@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
     	error("ERROR receiving packet.\n");
     }
     else if (recvlen > 0){
-    	readHeaderAndData(packetBuffer, dataBuffer, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
-    	sendAck(&sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
+    	sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
+    	sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
     	packetsReceived++;
     }
 
@@ -109,8 +109,8 @@ int main(int argc, char *argv[])
     		error("ERROR receiving packet.\n");
     	}
     	else if (recvlen > 0){
-    		readHeaderAndData(packetBuffer, dataBuffer, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
-    		sendAck(&sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
+    		sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
+    		sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
 
     		if (packetType == DATA_TYPE){
     			packetsReceived++;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     	return result_string;
     }
 
-    void readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
+    int readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* maxSequenceNumber, int* datasize){
     	char packetTypeArr[1];
     	char seqNumArr[1];
     	char maxSeqNumArr[1];
@@ -169,9 +169,9 @@ int main(int argc, char *argv[])
     	printf("\nThe packet type number is: %d", *packetType);
 
     	memcpy(seqNumArr, packetBuffer + offset, 1);
-    	*sequenceNumber = atoi(seqNumArr);
+    	int sequenceNumber = atoi(seqNumArr);
     	offset += 1;
-    	printf("\nThe Sequence number: %d", *sequenceNumber);
+    	printf("\nThe Sequence number: %d", sequenceNumber);
 
     	memcpy(maxSeqNumArr, packetBuffer + offset, 1);
     	*maxSequenceNumber = atoi(maxSeqNumArr);
@@ -186,13 +186,15 @@ int main(int argc, char *argv[])
     	if (packet_type == DATA_TYPE){    		
     		memcpy(dataBuffer, packetBuffer + HEADER, *datasize);
     	}
+    	return sequenceNumber;
     }
 
-  void sendAck(int *sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd){
+  void sendAck(int sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd){
   	char headerBuffer[HEADER];
-  	int sequenceNum = *sequenceNumber;
+  	bzero(headerBuffer, HEADER);
   	int max = *maxSequenceNumber;
-    sprintf(headerBuffer, "%02d%d%d%04d", ACK_TYPE, sequenceNum, max, 0);
+  	printf("\n!!!!!\n%d seq num \n!!!!\n %d max \n", sequenceNumber, max);
+  	  sprintf(headerBuffer, "%d%d%d%04d", ACK_TYPE, sequenceNumber, max, 0);
     if(sendto(sockfd, headerBuffer, strlen(headerBuffer), 0, (struct sockaddr*)&serv_addr, addrlen)<0){
          error("ERROR on send to.\n");
     }

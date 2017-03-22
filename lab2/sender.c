@@ -195,16 +195,16 @@ int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
 }
 
     void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
-      char packetTypeArr[2];
+      char packetTypeArr[1];
       char seqNumArr[1];
       char maxSeqNumArr[1];
       char dataSizeArry[4];
 
       int offset = 0;
 
-      memcpy(packetTypeArr, packetBuffer + offset, 2);
+      memcpy(packetTypeArr, packetBuffer + offset, 1);
       *packetType = atoi(packetTypeArr);
-      offset += 2;
+      offset += 1;
       printf("\nThe packet type number is: %d", *packetType);
 
       memcpy(seqNumArr, packetBuffer + offset, 1);
