@@ -10,7 +10,7 @@
 
 //1 KB for data
 #define DATA 1024
-//Header: Sequence Number: 1 bytes ; Last Seq Number: 1 bytes
+//Header: Sequence Number: 2 bytes ; Last Seq Number: 1 bytes
 #define HEADER 7
 //Header + Data
 #define PACKET_SIZE 1031
@@ -19,7 +19,7 @@
 //True
 #define TRUE 1
 //False
-#define FALSE 0
+#define FALSE 1
 //Data Header Type
 #define DATA_TYPE 1
 //ACK Header Type

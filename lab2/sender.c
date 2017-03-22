@@ -3,7 +3,7 @@
    Lab 2
    CSE 2431
 
-   UDP client code.
+   UDP sender code.
  */
 
 
@@ -15,9 +15,7 @@
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <unistd.h>
-#include <time.h>
 #include "senderPackets.h"
 
 //1 KB for data
@@ -38,8 +36,6 @@
 #define ACK_TYPE 2
 //Timeout
 #define TIMEOUT 1
-
-void checkForCorrectNumberArguments(int argc);
 
 int main(int argc, char *argv[])
 {
@@ -86,13 +82,4 @@ int main(int argc, char *argv[])
 
  close(sockfd);
  return 0;
-}
-
-
-void checkForCorrectNumberArguments(int argc){
-  if (argc != 3) {
-   fprintf(stderr,"ERROR, the sender requires 2 arguments.\n");
-   exit(1);
- }
-
 }

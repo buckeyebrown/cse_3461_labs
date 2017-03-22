@@ -33,6 +33,15 @@ void error(char *msg)
   exit(1);
 }
 
+void checkForCorrectNumberArguments(int argc){
+  if (argc != 3) {
+   fprintf(stderr,"ERROR, the sender requires 2 arguments.\n");
+   exit(1);
+ }
+
+}
+
+
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss){
 
   long fsize;
@@ -51,11 +60,9 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
       error("The file size cannot be retrieved.");
       exit(1);
     }
-    printf("\nThe fsize is: %lu\n", fsize);
 
     int maxSeqNum = ((int) fsize / DATA);
 
-    printf("The max seq num is: %d\n", maxSeqNum);
     if (maxSeqNum > 9){
       error("File too large.\n");
     }
@@ -72,7 +79,7 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
       makePacket(packetBuffer, DATA_TYPE, sequenceNumber, filepointer, maxSeqNum);
 
       if (determineIfPacketWasDropped(probOfLoss)){
-      	printf("\n Sending packet %d of %d to receiver.\n", sequenceNumber, maxSeqNum);
+      	printf("Sending packet %d of %d to receiver.\n", sequenceNumber, maxSeqNum);
         if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
          error("ERROR on send to.\n");
        }
@@ -123,8 +130,6 @@ int determineIfPacketWasDropped(int probOfLoss){
 	// returns 1 if it was not dropped
   int ret, randomVal;
   randomVal = rand() % 100;
-  printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
-
   ret = randomVal > probOfLoss;
   return ret;
 }
@@ -156,7 +161,7 @@ int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, cha
    else{
     readHeaderAndACK(ack, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
     if (packetType == ACK_TYPE){
-      printf("ACK Successfully received. For packet %d out of %d.\n", sequenceNumber, maxSequenceNumber);
+      printf("ACK Successfully received. For packet %d out of %d.\n\n", sequenceNumber, maxSequenceNumber);
       return TRUE;
     }
   }

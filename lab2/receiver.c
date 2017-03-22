@@ -39,7 +39,7 @@
 int main(int argc, char *argv[])
 {
 	if (argc != 5) {
-		error("ERROR, the receiver requires 4 arguments\n");
+		error("ERROR, the receiver requires 4 arguments.\n");
 	}
 	int sockfd, portno;
 	char* sender_hostname;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     //Send the filename to the client
 
     if(sendto(sockfd, filename, strlen(filename), 0, (struct sockaddr*)&serv_addr, addrlen) < 0){
-    	error("ERROR on send to. First time.\n");
+    	error("ERROR on sending the filename.\n");
     }    
 
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
                 firstPacketReceivedAndACKed = TRUE;
             }
             else{
-                printf("ACK from Receiver to Sender failed.\n");
+                printf("ACK from Receiver to Sender failed. Resending ACK now.\n\n");
             }
 
         }
@@ -116,10 +116,10 @@ int main(int argc, char *argv[])
     fwrite(dataBuffer, 1, datasize, filepointer);
     int j = TRUE;
         int lastACKSent = FALSE;
-    while(j && !lastACKSent){
+    while(j || !lastACKSent){
         recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
-        printf("Received %d bytes.\n",recvlen);
         if (recvlen < 0){
+            error("ERROR receiving packet.\n");
         }
         else if (recvlen > 0){
           sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
@@ -128,10 +128,10 @@ int main(int argc, char *argv[])
             previousSequenceNumbers[sequenceNumber] = sequenceNumber + 1;
 
             if (determineIfPacketWasDropped(probOfLoss)){
-                sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);                
+                sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
             }
             else{
-                printf("ACK from Receiver to Sender failed.\n");
+                printf("ACK from Receiver to Sender failed. Resending ACK now.\n\n");
             }
 
             if (packetType == DATA_TYPE){
@@ -143,30 +143,29 @@ int main(int argc, char *argv[])
        else{
         if (determineIfPacketWasDropped(probOfLoss)){
           sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);     
-          if (sequenceNumber == maxSequenceNumber){
+          if (packetsReceived == maxSequenceNumber + 1){
             lastACKSent = TRUE;
-        }           
-    }
+            }           
+        }
     else{
-        printf("ACK from Receiver to Sender failed.\n");
-        if (sequenceNumber == maxSequenceNumber){
+        printf("ACK from Receiver to Sender failed. Resending ACK now.\n\n");
+        if (packetsReceived == maxSequenceNumber + 1){
             while(!lastACKSent){
                 if (determineIfPacketWasDropped(probOfLoss)){
                     sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
                     lastACKSent = TRUE;                
                 }
                 else{
-                    printf("ACK from Receiver to Sender failed.\n");
+                    printf("ACK from Receiver to Sender failed. Resending ACK now.\n\n");
                 }
             }
         }
     }
 }
 }
-    	//fwrite(dataBuffer, 1, datasize, filepointer);
-if((sequenceNumber == maxSequenceNumber)){
-  j = FALSE;
-}
+    if((sequenceNumber == maxSequenceNumber)){
+      j = FALSE;
+    }
 }
 
 if (packetsReceived == maxSequenceNumber + 1){
