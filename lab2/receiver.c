@@ -17,6 +17,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include "packets.h"
 
 //1 KB for data
 #define DATA 1024

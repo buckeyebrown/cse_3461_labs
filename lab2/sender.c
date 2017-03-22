@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
+#include "packets.h"
 
 //1 KB for data
 #define DATA 1024
@@ -25,6 +26,8 @@
 #define HEADER 7
 //Header + Data
 #define PACKET_SIZE 1031
+//Max Filename Size
+#define MAXFILENAMESIZE 64
 //True
 #define TRUE 1
 //False
@@ -37,6 +40,7 @@
 #define TIMEOUT 1
 
 void error(char* msg);
+void checkForCorrectNumberArguments(int argc);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss);
 void createDataHeader(char* filebuffer, int headerType, int sequenceNumber, int maxSequenceNumber, int filesize);
 void makePacket(char* file_data, int headerType, int sequenceNumber, FILE* filepointer, int maxSeqNum);
@@ -46,16 +50,13 @@ int determineIfPacketWasDropped(int probOfLoss);
 
 int main(int argc, char *argv[])
 {
-  if (argc != 3) {
-   fprintf(stderr,"ERROR, the sender requires 2 arguments.\n");
-   exit(1);
- }
 
+ checkForCorrectNumberArguments(argc);
  /*
  * Declare initial variables
  */ 
  struct sockaddr_in serv_addr, client_addr;
- int sockfd, portno, recvlen;
+ int sockfd, portno;
  socklen_t clilen;
  int probOfLoss = atof(argv[2]) * 100;
  portno = atoi(argv[1]);
@@ -77,18 +78,14 @@ int main(int argc, char *argv[])
   } //Bind the socket to the server address
 
 
- char filename[64];
- bzero(filename, 64);
+ char filename[MAXFILENAMESIZE];
+ bzero(filename, MAXFILENAMESIZE);
  clilen = sizeof(client_addr);
 
-
- recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
- printf("Received %d bytes.\n",recvlen);
+ int recvlen = recvfrom(sockfd, filename, MAXFILENAMESIZE, 0, (struct sockaddr*)&client_addr, &clilen);
  if (recvlen < 0){
    error("ERROR receiving packet.\n");
  }
-
-
  printf("File name sent to the server is: %s\n", filename);
 
  sendFile(filename, sockfd, client_addr, clilen, probOfLoss);
@@ -102,6 +99,14 @@ void error(char *msg)
 {
   perror(msg);
   exit(1);
+}
+
+void checkForCorrectNumberArguments(int argc){
+  if (argc != 3) {
+   fprintf(stderr,"ERROR, the sender requires 2 arguments.\n");
+   exit(1);
+ }
+
 }
 
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss){
