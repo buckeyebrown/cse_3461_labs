@@ -18,7 +18,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
-#include "packets.h"
+#include "receiverPackets.h"
 
 //1 KB for data
 #define DATA 1024
@@ -35,7 +35,6 @@
 //ACK Header Type
 #define ACK_TYPE 2
 
-int checkIfSequenceIsDuplicate(int sequenceNumber, int* previousSequenceNumbers, int maxSequenceNumber);
 
 int main(int argc, char *argv[])
 {
@@ -184,16 +183,3 @@ close(sockfd);
 return 0;
 }
 
-int checkIfSequenceIsDuplicate(int sequenceNumber, int* previousSequenceNumbers, int maxSequenceNumber){
-    //Return 1 if it is unique, return 0 if it is a duplicate.
-    int j = 0;
-
-    while (j < maxSequenceNumber){
-        if(previousSequenceNumbers[j] == sequenceNumber + 1){
-            printf("Duplicate packet. Ignored, then resending ACK.\n");
-            return 0;
-        }
-        j++;
-    }
-    return 1;
-}

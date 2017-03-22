@@ -18,7 +18,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
-#include "packets.h"
+#include "senderPackets.h"
 
 //1 KB for data
 #define DATA 1024

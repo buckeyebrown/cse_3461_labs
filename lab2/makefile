@@ -4,17 +4,20 @@
 
 all: sender receiver
 
-receiver: receiver.o packets.o
-	gcc -o receiver receiver.o packets.o
+receiver: receiver.o receiverPackets.o
+	gcc -o receiver receiver.o receiverPackets.o
 
-receiver.o: receiver.c packets.h
+receiver.o: receiver.c receiverPackets.h
 	gcc -c -Wall receiver.c 
 
-sender: sender.o packets.o
-	gcc -o sender sender.o packets.o
+sender: sender.o senderPackets.o
+	gcc -o sender sender.o senderPackets.o
 
-sender.o: sender.c packets.h
+sender.o: sender.c senderPackets.h
 	gcc -c -Wall sender.c
 
-packets.o: packets.c packets.h
-	gcc -c -Wall packets.c
+senderPackets.o: senderPackets.c senderPackets.h
+	gcc -c -Wall senderPackets.c
+
+receiverPackets.o: receiverPackets.c receiverPackets.h
+	gcc -c -Wall receiverPackets.c
