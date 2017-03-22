@@ -17,6 +17,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <time.h>
 #include "packets.h"
 
 //1 KB for data
@@ -37,7 +38,7 @@
 
 int main(int argc, char *argv[])
 {
-	if (argc != 4) {
+	if (argc != 5) {
 		error("ERROR, the receiver requires 4 arguments\n");
 	}
 	int sockfd, portno;
@@ -51,6 +52,7 @@ int main(int argc, char *argv[])
     char filename[64];
     bzero(filename, 64);
     memcpy(filename, argv[3], 64);
+    int probOfLoss = atoi(argv[4]) * 100;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
@@ -81,6 +83,7 @@ int main(int argc, char *argv[])
     char dataBuffer[DATA];
     int packetType, sequenceNumber, maxSequenceNumber, datasize;
     int packetsReceived = 0;
+    srand(time(NULL));
 
     recvlen = recvfrom(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&serv_addr, &addrlen);
     printf("Received %d bytes.\n",recvlen);
@@ -106,7 +109,13 @@ int main(int argc, char *argv[])
     	}
     	else if (recvlen > 0){
     		sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
-    		sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
+
+            if (determineIfPacketWasDropped(probOfLoss)){
+    		  sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);                
+            }
+            else{
+                printf("ACK from Receiver to Sender failed.\n");
+            }
 
     		if (packetType == DATA_TYPE){
     			packetsReceived++;
