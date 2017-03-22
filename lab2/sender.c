@@ -39,14 +39,12 @@
 //Timeout
 #define TIMEOUT 1
 
-void error(char* msg);
 void checkForCorrectNumberArguments(int argc);
 void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, socklen_t clilen, int probOfLoss);
 void createDataHeader(char* filebuffer, int headerType, int sequenceNumber, int maxSequenceNumber, int filesize);
 void makePacket(char* file_data, int headerType, int sequenceNumber, FILE* filepointer, int maxSeqNum);
-void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize);
-int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer, int probOfLoss);
-int determineIfPacketWasDropped(int probOfLoss);
+
+
 
 int main(int argc, char *argv[])
 {
@@ -95,11 +93,6 @@ int main(int argc, char *argv[])
  return 0;
 }
 
-void error(char *msg)
-{
-  perror(msg);
-  exit(1);
-}
 
 void checkForCorrectNumberArguments(int argc){
   if (argc != 3) {
@@ -194,79 +187,4 @@ void makePacket(char *file_data, int headerType, int sequenceNumber, FILE* filep
   createDataHeader(file_data, DATA_TYPE, sequenceNumber, maxSeqNum, datasize);
 }
 
-int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer, int probOfLoss){
-  int recvlen, packetType, sequenceNumber, maxSequenceNumber, datasize;
-  char ack[HEADER];
 
-  struct timeval timeout={TIMEOUT,0}; 
-  setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,(char*)&timeout,sizeof(struct timeval));
-  int q = FALSE;
-  while(!q){    
-    recvlen = recvfrom(sockfd, ack, HEADER, 0, (struct sockaddr*)&client_addr, &clilen);
-    if (recvlen < 0){
-        printf("SEND NEW PACKET HERE\n");
-        if (determineIfPacketWasDropped(probOfLoss)){
-          if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
-           error("ERROR on send to.\n");
-         }
-          else{
-            q = TRUE;
-          }
-        }
-        else
-        {
-          printf("\n ERROR, packet was dropped.");
-        }
-   }
-
-   else{
-    readHeaderAndData(ack, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
-    if (packetType == ACK_TYPE){
-      printf("ACK Successfully received. For packet %d out of %d.\n", sequenceNumber, maxSequenceNumber);
-      return TRUE;
-    }
-  }
-}
-
-return FALSE;
-}
-
-void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize){
-  char packetTypeArr[1];
-  char seqNumArr[1];
-  char maxSeqNumArr[1];
-  char dataSizeArry[4];
-
-  int offset = 0;
-
-  memcpy(packetTypeArr, packetBuffer + offset, 1);
-  *packetType = atoi(packetTypeArr);
-  offset += 1;
-      //printf("\nThe packet type number is: %d", *packetType);
-
-  memcpy(seqNumArr, packetBuffer + offset, 1);
-  *sequenceNumber = atoi(seqNumArr);
-  offset += 1;
-      //printf("\nThe Sequence number: %d", *sequenceNumber);
-
-  memcpy(maxSeqNumArr, packetBuffer + offset, 1);
-  *maxSequenceNumber = atoi(maxSeqNumArr);
-  offset += 1;
-      //printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
-
-
-  memcpy(dataSizeArry, packetBuffer + offset, 4);
-  *datasize = atoi(dataSizeArry);
-  offset += 4;
-      //printf("\nThe Data Size: %d\n", *datasize);
-
-}
-
-int determineIfPacketWasDropped(int probOfLoss){
-  int ret, randomVal;
-  randomVal = rand() % 100;
-  printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
-
-  ret = randomVal > probOfLoss;
-  return ret;
-}

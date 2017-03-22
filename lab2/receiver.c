@@ -34,11 +34,6 @@
 //ACK Header Type
 #define ACK_TYPE 2
 
-void error(char* msg);
-char* concat(const char *string_1, const char *string_2);
-int readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* maxSequenceNumber, int* datasize);
-void sendAck(int sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd);
-
 
 int main(int argc, char *argv[])
 {
@@ -137,66 +132,3 @@ int main(int argc, char *argv[])
     	close(sockfd);
     	return 0;
     }
-
-    void error(char *msg)
-    {
-    	perror(msg);
-    	exit(1);
-    }
-
-
-    char* concat(const char *string_1, const char *string_2)
-    {
-    	char *result_string = malloc(strlen(string_1)+strlen(string_2)+1);
-    	if (result_string == NULL){
-    		error("String concat failed at memory allocation.\n");
-    	}
-    	strcpy(result_string, string_1);
-    	strcat(result_string, string_2);
-    	return result_string;
-    }
-
-    int readHeaderAndData(char* packetBuffer, char* dataBuffer, int* packetType, int* maxSequenceNumber, int* datasize){
-    	char packetTypeArr[1];
-    	char seqNumArr[1];
-    	char maxSeqNumArr[1];
-    	char dataSizeArry[4];
-
-    	int offset = 0;
-
-    	memcpy(packetTypeArr, packetBuffer + offset, 1);
-    	*packetType = atoi(packetTypeArr);
-    	offset += 1;
-    	printf("\nThe packet type number is: %d", *packetType);
-
-    	memcpy(seqNumArr, packetBuffer + offset, 1);
-    	int sequenceNumber = atoi(seqNumArr);
-    	offset += 1;
-    	printf("\nThe Sequence number: %d", sequenceNumber);
-
-    	memcpy(maxSeqNumArr, packetBuffer + offset, 1);
-    	*maxSequenceNumber = atoi(maxSeqNumArr);
-    	offset += 1;
-    	printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
-
-    	memcpy(dataSizeArry, packetBuffer + offset, 4);
-    	*datasize = atoi(dataSizeArry);
-    	offset += 4;
-    	printf("\nThe Data Size: %d\n", *datasize);
-    	int packet_type = *packetType;
-    	if (packet_type == DATA_TYPE){    		
-    		memcpy(dataBuffer, packetBuffer + HEADER, *datasize);
-    	}
-    	return sequenceNumber;
-    }
-
-  void sendAck(int sequenceNumber, int *maxSequenceNumber, struct sockaddr_in serv_addr, socklen_t addrlen, int sockfd){
-  	char headerBuffer[HEADER];
-  	bzero(headerBuffer, HEADER);
-  	int max = *maxSequenceNumber;
-  	  sprintf(headerBuffer, "%d%d%d%04d", ACK_TYPE, sequenceNumber, max, 0);
-    if(sendto(sockfd, headerBuffer, strlen(headerBuffer), 0, (struct sockaddr*)&serv_addr, addrlen)<0){
-         error("ERROR on send to.\n");
-    }
-  }
-
