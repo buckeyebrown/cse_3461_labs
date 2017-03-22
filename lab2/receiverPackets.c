@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include "packets.h"
+#include "receiverPackets.h"
 
 //1 KB for data
 #define DATA 1024
