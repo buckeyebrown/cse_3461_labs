@@ -180,7 +180,6 @@ int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
   char ack[HEADER];
 
   recvlen = recvfrom(sockfd, ack, HEADER, 0, (struct sockaddr*)&client_addr, &clilen);
-  printf("Received %d bytes.\n",recvlen);
   if (recvlen < 0){
    error("ERROR receiving packet.\n");
   }
@@ -205,22 +204,22 @@ int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen){
       memcpy(packetTypeArr, packetBuffer + offset, 1);
       *packetType = atoi(packetTypeArr);
       offset += 1;
-      printf("\nThe packet type number is: %d", *packetType);
+      //printf("\nThe packet type number is: %d", *packetType);
 
       memcpy(seqNumArr, packetBuffer + offset, 1);
       *sequenceNumber = atoi(seqNumArr);
       offset += 1;
-      printf("\nThe Sequence number: %d", *sequenceNumber);
+      //printf("\nThe Sequence number: %d", *sequenceNumber);
 
       memcpy(maxSeqNumArr, packetBuffer + offset, 1);
       *maxSequenceNumber = atoi(maxSeqNumArr);
       offset += 1;
-      printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
+      //printf("\nThe Max Sequence number: %d", *maxSequenceNumber);
 
 
       memcpy(dataSizeArry, packetBuffer + offset, 4);
       *datasize = atoi(dataSizeArry);
       offset += 4;
-      printf("\nThe Data Size: %d\n", *datasize);
+      //printf("\nThe Data Size: %d\n", *datasize);
 
     }

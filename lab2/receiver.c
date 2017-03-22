@@ -193,7 +193,6 @@ int main(int argc, char *argv[])
   	char headerBuffer[HEADER];
   	bzero(headerBuffer, HEADER);
   	int max = *maxSequenceNumber;
-  	printf("\n!!!!!\n%d seq num \n!!!!\n %d max \n", sequenceNumber, max);
   	  sprintf(headerBuffer, "%d%d%d%04d", ACK_TYPE, sequenceNumber, max, 0);
     if(sendto(sockfd, headerBuffer, strlen(headerBuffer), 0, (struct sockaddr*)&serv_addr, addrlen)<0){
          error("ERROR on send to.\n");
