@@ -41,8 +41,8 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
 void createDataHeader(char* filebuffer, int headerType, int sequenceNumber, int maxSequenceNumber, int filesize);
 void makePacket(char* file_data, int headerType, int sequenceNumber, FILE* filepointer, int maxSeqNum);
 void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber, int* maxSequenceNumber, int* datasize);
-int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer);
-
+int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer, int probOfLoss);
+int determineIfPacketWasDropped(int probOfLoss);
 
 int main(int argc, char *argv[])
 {
@@ -51,16 +51,20 @@ int main(int argc, char *argv[])
    exit(1);
  }
 
-     /*sockaddr_in: Structure Containing an Internet Address*/
+ /*
+ * Declare initial variables
+ */ 
  struct sockaddr_in serv_addr, client_addr;
- int sockfd, portno;
+ int sockfd, portno, recvlen;
  socklen_t clilen;
  int probOfLoss = atof(argv[2]) * 100;
-
  portno = atoi(argv[1]);
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
-  if (sockfd < 0) 
+ sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
+ if (sockfd < 0){
     error("ERROR opening socket");
+ }
+
+
 
 
   bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -68,14 +72,15 @@ int main(int argc, char *argv[])
   serv_addr.sin_addr.s_addr = INADDR_ANY; //for the server the IP address is always the address that the server is running on
   serv_addr.sin_port = htons(portno); //convert from host to network byte order
 
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) //Bind the socket to the server address
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){    
    error("ERROR on binding");
+  } //Bind the socket to the server address
 
- int recvlen;
 
  char filename[64];
  bzero(filename, 64);
  clilen = sizeof(client_addr);
+
 
  recvlen = recvfrom(sockfd, filename, 64, 0, (struct sockaddr*)&client_addr, &clilen);
  printf("Received %d bytes.\n",recvlen);
@@ -83,9 +88,11 @@ int main(int argc, char *argv[])
    error("ERROR receiving packet.\n");
  }
 
+
  printf("File name sent to the server is: %s\n", filename);
 
  sendFile(filename, sockfd, client_addr, clilen, probOfLoss);
+
 
  close(sockfd);
  return 0;
@@ -128,27 +135,27 @@ void sendFile(char* filename, int sockfd, struct sockaddr_in client_addr, sockle
     //char *file_data = (char*) malloc(fsize); //Allocate the memory for the size of the file_data
     srand(time(NULL));
     int sequenceNumber = 0;
+
     char packetBuffer[PACKET_SIZE];
+
+
     while (sequenceNumber < maxSeqNum + 1){
       makePacket(packetBuffer, DATA_TYPE, sequenceNumber, filepointer, maxSeqNum);
-      int randomVal = rand() % 100;
-      printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
-      if (randomVal > probOfLoss){
+
+      if (determineIfPacketWasDropped(probOfLoss)){
         if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
          error("ERROR on send to.\n");
        }
        int q = FALSE;
-       time_t startTime = time(NULL);
         while(!q){
-          q = waitForAck(sockfd,client_addr, clilen, packetBuffer);
+          q = waitForAck(sockfd,client_addr, clilen, packetBuffer, probOfLoss);
         }
     }
     else{
       printf("Error, packet %d of %d was lost.\n", sequenceNumber, maxSeqNum);
-             int q = FALSE;
-       time_t startTime = time(NULL);
+        int q = FALSE;
         while(!q){
-          q = waitForAck(sockfd,client_addr, clilen, packetBuffer);
+          q = waitForAck(sockfd,client_addr, clilen, packetBuffer, probOfLoss);
         }
     }
     sequenceNumber++;
@@ -182,26 +189,40 @@ void makePacket(char *file_data, int headerType, int sequenceNumber, FILE* filep
   createDataHeader(file_data, DATA_TYPE, sequenceNumber, maxSeqNum, datasize);
 }
 
-int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer){
+int waitForAck(int sockfd, struct sockaddr_in client_addr, socklen_t clilen, char* packetBuffer, int probOfLoss){
   int recvlen, packetType, sequenceNumber, maxSequenceNumber, datasize;
   char ack[HEADER];
 
   struct timeval timeout={TIMEOUT,0}; 
   setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,(char*)&timeout,sizeof(struct timeval));
-  recvlen = recvfrom(sockfd, ack, HEADER, 0, (struct sockaddr*)&client_addr, &clilen);
-  if (recvlen < 0){
+  int q = FALSE;
+  while(!q){    
+    recvlen = recvfrom(sockfd, ack, HEADER, 0, (struct sockaddr*)&client_addr, &clilen);
+    if (recvlen < 0){
         printf("SEND NEW PACKET HERE\n");
-        if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
-         error("ERROR on send to.\n");
-       }
- }
- else{
-  readHeaderAndData(ack, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
-  if (packetType == ACK_TYPE){
-    printf("ACK Successfully received. For packet %d out of %d.\n", sequenceNumber, maxSequenceNumber);
-    return TRUE;
+        if (determineIfPacketWasDropped(probOfLoss)){
+          if(sendto(sockfd, packetBuffer, PACKET_SIZE, 0, (struct sockaddr*)&client_addr, clilen)<0){
+           error("ERROR on send to.\n");
+         }
+          else{
+            q = TRUE;
+          }
+        }
+        else
+        {
+          printf("\n ERROR, packet was dropped.");
+        }
+   }
+
+   else{
+    readHeaderAndData(ack, &packetType, &sequenceNumber, &maxSequenceNumber, &datasize);
+    if (packetType == ACK_TYPE){
+      printf("ACK Successfully received. For packet %d out of %d.\n", sequenceNumber, maxSequenceNumber);
+      return TRUE;
+    }
   }
 }
+
 return FALSE;
 }
 
@@ -234,4 +255,13 @@ void readHeaderAndData(char* packetBuffer, int* packetType, int* sequenceNumber,
   offset += 4;
       //printf("\nThe Data Size: %d\n", *datasize);
 
+}
+
+int determineIfPacketWasDropped(int probOfLoss){
+  int ret, randomVal;
+  randomVal = rand() % 100;
+  printf("\n%d is the random value. Versus %d.\n", randomVal, probOfLoss);
+
+  ret = randomVal > probOfLoss;
+  return ret;
 }
