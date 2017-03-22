@@ -35,6 +35,7 @@
 //ACK Header Type
 #define ACK_TYPE 2
 
+int checkIfSequenceIsDuplicate(int sequenceNumber, int* previousSequenceNumbers, int maxSequenceNumber);
 
 int main(int argc, char *argv[])
 {
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
     char filename[64];
     bzero(filename, 64);
     memcpy(filename, argv[3], 64);
-    int probOfLoss = atoi(argv[4]) * 100;
+    int probOfLoss = atof(argv[4]) * 100;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
@@ -92,9 +93,13 @@ int main(int argc, char *argv[])
     }
     else if (recvlen > 0){
     	sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
+        //create an array of previousSequenceNumbers of size maxSequenceNumber. Zero it out.
     	sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);
     	packetsReceived++;
     }
+        int previousSequenceNumbers[maxSequenceNumber];
+        bzero(previousSequenceNumbers, maxSequenceNumber);
+        previousSequenceNumbers[sequenceNumber] = sequenceNumber + 1;
 
     char* newfilename = concat("transferred_", filename); //concat string, ie, transferred_image.jpg
     FILE* filepointer = fopen(newfilename, "wb");
@@ -109,18 +114,31 @@ int main(int argc, char *argv[])
     	}
     	else if (recvlen > 0){
     		sequenceNumber = readHeaderAndData(packetBuffer, dataBuffer, &packetType, &maxSequenceNumber, &datasize);
+            //Check if the sequence number is a duplicate
+            if (checkIfSequenceIsDuplicate(sequenceNumber, previousSequenceNumbers, maxSequenceNumber)){
+                previousSequenceNumbers[sequenceNumber] = sequenceNumber + 1;
 
-            if (determineIfPacketWasDropped(probOfLoss)){
-    		  sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);                
+                if (determineIfPacketWasDropped(probOfLoss)){
+        		  sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);                
+                }
+                else{
+                    printf("ACK from Receiver to Sender failed.\n");
+                }
+
+        		if (packetType == DATA_TYPE){
+        			packetsReceived++;
+        			fwrite(dataBuffer, 1, datasize, filepointer);
+        		}
+
             }
             else{
-                printf("ACK from Receiver to Sender failed.\n");
+                if (determineIfPacketWasDropped(probOfLoss)){
+                  sendAck(sequenceNumber, &maxSequenceNumber, serv_addr, addrlen, sockfd);                
+                }
+                else{
+                    printf("ACK from Receiver to Sender failed.\n");
+                }
             }
-
-    		if (packetType == DATA_TYPE){
-    			packetsReceived++;
-    			fwrite(dataBuffer, 1, datasize, filepointer);
-    		}
     	}
     	//fwrite(dataBuffer, 1, datasize, filepointer);
     	if(sequenceNumber == maxSequenceNumber){
@@ -141,3 +159,17 @@ int main(int argc, char *argv[])
     	close(sockfd);
     	return 0;
     }
+
+int checkIfSequenceIsDuplicate(int sequenceNumber, int* previousSequenceNumbers, int maxSequenceNumber){
+    //Return 1 if it is unique, return 0 if it is a duplicate.
+    int j = 0;
+
+    while (j < maxSequenceNumber){
+        if(previousSequenceNumbers[j] == sequenceNumber + 1){
+            printf("Duplicate packet. Ignored, then resending ACK.\n");
+            return 0;
+        }
+        j++;
+    }
+    return 1;
+}
